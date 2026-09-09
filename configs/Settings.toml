@@ -1,0 +1,29 @@
+# /opt/plato/Settings.toml - Plato configuration for NOOK GlowLight Plus 7.8" (BNRV700)
+keyboard-layout = "English"
+frontlight = true
+wifi = false
+inverted = false
+sleep-cover = true
+auto-share = false
+button-scheme = "natural"
+auto-suspend = 30.0
+auto-power-off = 3.0
+time-format = "%H:%M"
+date-format = "%A, %B %-d, %Y"
+
+[frontlight-levels]
+intensity = 25.0
+warmth = 15.0
+
+[[libraries]]
+name = "Books"
+path = "/data/books"
+mode = "filesystem"
+sort-method = "opened"
+first-column = "title-and-author"
+second-column = "progress"
+thumbnail-previews = true
+
+[reader]
+font-path = "/usr/share/fonts/shared"
+
