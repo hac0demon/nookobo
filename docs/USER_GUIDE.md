@@ -156,3 +156,63 @@ For typing long URLs, complex passwords, search queries, or form inputs, you can
    - **Open URL**: Type or paste any address on your phone and tap **Go to URL**.
    - **Instant Search**: Type search terms and tap **Search DuckDuckGo**.
    - **Live Phone Keyboard**: Tap the live input field to type into any focused text box on the NOOK screen using your phone's native keyboard, autocorrect, clipboard paste, and voice dictation.
+
+---
+
+## 6. System Updates & Diagnostics
+
+### 6.1 Updating the Linux System (Self-Update)
+
+The boot script (`/data/boot_linux.sh`) installs a new rootfs payload automatically
+when one is staged on the device:
+
+1. Copy `deploy_payload.tar.gz` **and** its checksum file `deploy_payload.tar.gz.sha256`
+   to the device:
+   - **MTP (easiest)**: connect via USB and drag both files to the NOOK's storage root
+     (the same area that shows `Books`/`Music`).
+   - **adb** (from this repository, while Android is running): `make deploy` and choose
+     "Stage payload via Android /sdcard".
+2. Reboot the device.
+3. On the next Linux boot the boot script:
+   - verifies the payload against the `.sha256` checksum (on a mismatch the payload is
+     kept and the boot log records the mismatch - re-copy the files and reboot),
+   - extracts it over `/data/linuxroot`,
+   - records the version transition (`old -> new`) in `/data/boot_linux.log`,
+   - removes the staged payload so it is applied exactly once.
+
+Every payload carries a version marker at `/etc/bnrv700-release` (git description +
+build time). `make device-check` and the boot log report it, so you can always confirm
+which build is installed.
+
+### 6.2 Battery Indicators
+
+- **Boot splash**: a battery gauge (outline with proportional fill) is drawn under the
+  title card while the panel wakes.
+- **App switcher**: the dialog header shows the live fuel gauge, e.g.
+  `BAT 87% DIS`, `BAT 100% FULL`, `BAT 54% CHG`.
+- Inside KOReader, the reader's own status bar reports the battery as usual.
+
+### 6.3 Smart Cover (Lid) Behavior
+
+- **In KOReader**: the cover is handled by KOReader's native smart-cover support
+  (sleep screen, wake on open).
+- **In any other app (Plato, NetSurf, app switcher)**: closing the cover suspends the
+  SoC to RAM. The e-ink panel keeps the last frame while the cover is closed, and the
+  running app resumes in place when you open the cover.
+
+### 6.4 Device Health Check (`make device-check`)
+
+From this repository, with the device connected via USB (adb) and the Linux chroot
+running:
+
+```bash
+make device-check
+bash scripts/device_check.sh --glyph   # additionally verify rendered text on the panel
+```
+
+The suite verifies: the EPDC V1 full-frame update + completion wait (one visible panel
+flash), framebuffer geometry (1404x1872 / 16bpp / 2816-byte stride), the touch and
+virtual-key input nodes, the `btn-watcher` / `dropbear` / `syncthing` daemons,
+frontlight write/read-back, battery sysfs, NetSurf dynamic linking, disk usage,
+supervisor state files, and the installed rootfs version. Failing checks are printed
+as `FAIL <name>`.

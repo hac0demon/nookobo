@@ -95,3 +95,57 @@ If touch is not registering in KOReader:
    ls -l /sys/class/backlight/
    ```
    Ensure `lm3630a_led1a`, `lm3630a_led1b`, and `mxc_msp430.0` symlinks are present.
+
+---
+
+## 5. System Update Diagnostics
+
+### 5.1 Payload Not Applied After Reboot
+
+1. Check the boot log for the deploy lines:
+   ```bash
+   ssh root@<DEVICE_IP>
+   grep -E "boot_linux|payload|rootfs version" /data/boot_linux.log | tail
+   ```
+   Look for `Found payload`, `Payload checksum OK`/`MISMATCH`, and the
+   `rootfs version: old -> new` line.
+2. On a checksum mismatch the payload is **kept** on the device for retry. Re-copy both
+   files (MTP, or `make deploy`) and reboot again.
+3. Confirm the installed version at any time:
+   ```bash
+   cat /etc/bnrv700-release
+   ```
+   or from the host: `make device-check` (reports `rootfs-version`).
+
+### 5.2 Boot Loop After an Update
+
+The deployed payload only replaces the chroot rootfs (`/data/linuxroot`); the boot
+image in the eMMC `boot` partition is untouched. If a bad payload prevents boot:
+1. Hold **Power** for 12 seconds, then **Power + Home** for ~8 seconds (fastboot).
+2. Tether the known-good boot image: `fastboot boot build/boot_linux.img`.
+3. Restore a good payload to `/data/deploy_payload.tar.gz` (or delete the staged files)
+   and reboot, or re-run `make push-rootfs`.
+
+---
+
+## 6. Battery & Power Diagnostics
+
+- Fuel gauge sysfs: `/sys/class/power_supply/mc13892_bat/{capacity,status,voltage_now}`;
+  USB online state: `/sys/class/power_supply/mc13892_charger/online`.
+- If the app-switcher header shows `BAT n/a`, verify `mc13892_bat` is present in
+  `/sys/class/power_supply/` and that `capacity` is readable.
+- If the lid does not suspend outside KOReader: confirm `btn-watcher` is running
+  (Section 2.2) - it is the component that owns the lid event.
+
+---
+
+## 7. Display Health Probe (`make device-check`)
+
+`make device-check` runs `/opt/bin/epdc_probe` inside the chroot: a full-frame
+`MXCFB_SEND_UPDATE_V1` update followed by `MXCFB_WAIT_FOR_UPDATE_COMPLETE`, plus
+geometry asserts (1404x1872, 16bpp, 2816-byte stride). One visible panel flash is
+expected. The probe silences `/sys/class/graphics/fb0/epdc_auto_update` for the
+round-trip (and restores the previous value), so it is not affected by another
+framebuffer client's automatic refreshes. A failing EPDC check while KOReader still
+renders correctly almost always points at a second client writing the framebuffer
+without using the completion wait.
