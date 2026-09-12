@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT="${1:-${ROOT_DIR}/build/bnrv700-ci-inputs.tar.gz}"
 INCLUDE_BOOT="${INCLUDE_BOOT:-1}"
 
+bash "${ROOT_DIR}/scripts/ensure_netsurf_inputs.sh"
+
 required=(
     downloads/toolchain_arm
     downloads/netsurf_src/netsurf-all-3.11.tar.gz

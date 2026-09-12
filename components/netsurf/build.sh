@@ -67,6 +67,8 @@ for hosttool in perl sed install make pkg-config dpkg-deb apt-get; do
     command -v "$hosttool" >/dev/null || { echo "missing host tool: $hosttool" >&2; exit 1; }
 done
 
+bash "$REPO/scripts/ensure_netsurf_inputs.sh"
+
 # Keep the NetSurf-side OSK integration reproducible.  The preload shim exports
 # this weakly-consumed callback; it is intentionally optional for stock builds.
 if ! grep -q 'SDL_ShowKeyboardForTextInput' "$SRC/netsurf/frontends/framebuffer/gui.c"; then
@@ -74,7 +76,13 @@ if ! grep -q 'SDL_ShowKeyboardForTextInput' "$SRC/netsurf/frontends/framebuffer/
     patch -d "$SRC" -p1 --forward < "$REPO/components/netsurf/src/netsurf_fb_osk.patch"
 fi
 
-if [ ! -d "$SYS/usr/lib/pkgconfig" ]; then
+needs_sysroot_assembly=0
+[ -d "$SYS/usr/lib/pkgconfig" ] || needs_sysroot_assembly=1
+for target_lib in libz.so libssl.so libcrypto.so; do
+    [ -e "$SYS/usr/lib/$target_lib" ] || needs_sysroot_assembly=1
+done
+
+if [ "$needs_sysroot_assembly" -eq 1 ]; then
     log "assembling merged sysroot"
     rm -rf "$SYS"
     mkdir -p "$SYS/usr"
@@ -95,6 +103,13 @@ if [ ! -d "$SYS/usr/lib/pkgconfig" ]; then
         [ -e "$SYS/usr/lib/$stem.so" ] || ln -sf "$base" "$SYS/usr/lib/$stem.so"
     done
 fi
+
+for target_lib in libz.so libssl.so libcrypto.so; do
+    [ -e "$SYS/usr/lib/$target_lib" ] || {
+        echo "ERROR: merged target sysroot is missing ${target_lib}; check zlib-dev/openssl-dev APKs" >&2
+        exit 1
+    }
+done
 
 log "staging host tools (flex/bison/m4/gperf/libpng-dev) + target cc wrapper"
 mkdir -p "$HT/bin" "$HT/hostdeb" "$HT/root"
