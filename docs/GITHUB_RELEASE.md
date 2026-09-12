@@ -42,7 +42,8 @@ provides a helper that preserves the required relative paths:
 Set `INCLUDE_BOOT=0` when making a rootfs-only input bundle. The helper stores
 the pristine `netsurf-all-3.11.tar.gz`, not the locally configured NetSurf
 directory; the workflow extracts and rebuilds it on the runner so local
-absolute paths cannot leak into CI.
+absolute paths cannot leak into CI. Archive creation does not require network
+access; the runner fetches missing public NetSurf APKs during the build.
 
 Do not publish stock firmware or proprietary third-party files publicly unless
 their redistribution terms permit it. A private object store or a private

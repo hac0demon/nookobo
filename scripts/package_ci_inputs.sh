@@ -6,7 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT="${1:-${ROOT_DIR}/build/bnrv700-ci-inputs.tar.gz}"
 INCLUDE_BOOT="${INCLUDE_BOOT:-1}"
 
-bash "${ROOT_DIR}/scripts/ensure_netsurf_inputs.sh"
+# Keep archive creation offline-friendly. The GitHub runner has network access
+# and components/netsurf/build.sh completes missing public APKs before linking.
 
 required=(
     downloads/toolchain_arm
