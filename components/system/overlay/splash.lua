@@ -65,6 +65,34 @@ for y = banner_top, banner_bottom do
     end
 end
 
+-- Draw a battery gauge below the title card (outline, tip, proportional fill)
+local cap = 100
+local cf = io.open("/sys/class/power_supply/mc13892_bat/capacity", "r")
+if cf then
+    local v = cf:read("*number")
+    if v and v >= 0 and v <= 100 then cap = v end
+    cf:close()
+end
+local gx, gy, gw, gh = 856, 900, 160, 80
+for y = gy, gy + gh do
+    for x = gx, gx + gw do
+        if y == gy or y == gy + gh - 1 or x == gx or x == gx + gw - 1 then
+            p16[y * stride + x] = 0x0000
+        end
+    end
+end
+for y = gy + 20, gy + gh - 20 do
+    for x = gx + gw, gx + gw + 16 do
+        p16[y * stride + x] = 0x0000
+    end
+end
+local fill_w = math.floor((gw - 8) * cap / 100)
+for y = gy + 4, gy + gh - 4 do
+    for x = gx + 4, gx + 4 + fill_w do
+        p16[y * stride + x] = 0x0000
+    end
+end
+
 -- Send FULL GC16 hardware refresh to wake up and flash the E Ink panel
 local upd = ffi.new("struct mxcfb_update_data_v1")
 upd.update_region.top = 0

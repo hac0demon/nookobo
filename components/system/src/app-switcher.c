@@ -218,6 +218,29 @@ static void query_music_status(char *status, size_t status_len, char *track, siz
     pclose(f);
 }
 
+static void query_battery_status(char *buf, size_t len) {
+    snprintf(buf, len, "BAT n/a");
+    int cap = -1;
+    FILE *f = fopen("/sys/class/power_supply/mc13892_bat/capacity", "r");
+    if (f) {
+        if (fscanf(f, "%d", &cap) != 1) cap = -1;
+        fclose(f);
+    }
+    if (cap < 0 || cap > 100) return;
+    char status[32] = "";
+    f = fopen("/sys/class/power_supply/mc13892_bat/status", "r");
+    if (f) {
+        if (fgets(status, sizeof(status), f)) status[strcspn(status, "\r\n")] = 0;
+        fclose(f);
+    }
+    const char *tag = "?";
+    if (strcmp(status, "Charging") == 0) tag = "CHG";
+    else if (strcmp(status, "Discharging") == 0) tag = "DIS";
+    else if (strcmp(status, "Full") == 0) tag = "FULL";
+    else if (strcmp(status, "Not charging") == 0) tag = "-";
+    snprintf(buf, len, "BAT %d%% %s", cap, tag);
+}
+
 static void draw_button_widget(const struct Button *b, bool pressed) {
     uint16_t bg = pressed ? COLOR_BLACK : COLOR_WHITE;
     uint16_t fg = pressed ? COLOR_WHITE : COLOR_BLACK;
@@ -303,6 +326,14 @@ static void draw_dialog(void) {
     /* Header bar */
     draw_rect(DLG_X, DLG_Y, DLG_W, 90, COLOR_BLACK);
     draw_string_centered(DLG_X, DLG_Y, DLG_W, 90, "NOOK APPLICATION SWITCHER", 2, COLOR_WHITE, COLOR_BLACK);
+
+    /* Battery status, right side of the header bar */
+    {
+        char batt[48];
+        query_battery_status(batt, sizeof(batt));
+        draw_string(DLG_X + DLG_W - (int)strlen(batt) * 16 - 24, DLG_Y + 29, batt, 2,
+                    COLOR_WHITE, COLOR_BLACK);
+    }
 
     /* Section Subtitle */
     draw_string(202, 315, "SELECT APPLICATION TO RUN:", 2, COLOR_GRAY_DK, COLOR_WHITE);
