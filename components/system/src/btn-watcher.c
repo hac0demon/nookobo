@@ -709,8 +709,25 @@ int main(int argc, char **argv) {
                     emit_event(ufd, ev.type, ev.code, ev.value);
                 }
             }
+        } else if (ev.type == EV_SW && ev.code == 0) { /* SW_LID */
+            if (ev.value == 1) {
+                /* Cover closed. KOReader consumes the passthrough event and
+                 * draws its own sleep cover; for any other active app,
+                 * suspend the SoC directly - the e-ink panel retains the
+                 * last frame until the cover opens. */
+                char app[32];
+                get_active_app(app, sizeof(app));
+                if (strcmp(app, "koreader") != 0) {
+                    printf("[btn-watcher] Lid closed -> suspending (active=%s)\n", app);
+                    fflush(stdout);
+                    system("echo mem > /sys/power/state 2>/dev/null");
+                    printf("[btn-watcher] Lid open -> resumed\n");
+                }
+            }
+            /* Pass through so KOReader's smart cover still sees the event. */
+            emit_event(ufd, ev.type, ev.code, ev.value);
         } else if (ev.type == EV_SW || ev.type == EV_SYN) {
-            /* Pass through SW_LID (magnetic cover) and EV_SYN */
+            /* Pass through other switch events and EV_SYN */
             emit_event(ufd, ev.type, ev.code, ev.value);
         }
     }
