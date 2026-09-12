@@ -42,9 +42,9 @@ downloads/hosttools/
 boot_backup.img
 boot_linux.img
 deploy_payload.tar.gz
-kernel
+/kernel
 ramdisk.cpio
-init
+/init
 
 # Editor / OS noise
 .DS_Store
