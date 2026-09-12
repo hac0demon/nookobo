@@ -485,6 +485,8 @@ int main(int argc, char **argv) {
     int home_pending_single = 0;
     int home_long_sent = 0;
     uint64_t home_down_time = 0;
+    uint64_t home_single_time = 0;
+    int home_double_consumed = 0;
 
     while (1) {
         uint64_t now = get_mono_ms();
@@ -526,11 +528,16 @@ int main(int argc, char **argv) {
             }
         }
 
-        /* Home button single tap emission */
+        /* Home button single tap emission, confirmed after the double-tap window */
         if (home_pending_single) {
-            printf("[btn-watcher] Home single tap confirmed -> Library/Menu\n");
-            emit_key_click(ufd, KEY_HOME);
-            home_pending_single = 0;
+            int rem = (int)(home_single_time + POWER_DOUBLE_CLICK_MS - now);
+            if (rem <= 0) {
+                printf("[btn-watcher] Home single tap confirmed -> Library/Menu\n");
+                emit_key_click(ufd, KEY_HOME);
+                home_pending_single = 0;
+            } else if (rem < timeout_ms) {
+                timeout_ms = rem;
+            }
         }
 
         fd_set rfds;
@@ -571,6 +578,16 @@ int main(int argc, char **argv) {
             }
         } else if (ev.type == EV_KEY && ev.code == KEY_HOME) {
             if (ev.value == 1) { /* Down */
+                /* Home double tap: second press inside the double-click window
+                 * toggles background audio playback in any app */
+                if (home_pending_single && !home_double_consumed &&
+                    (now - home_single_time <= POWER_DOUBLE_CLICK_MS)) {
+                    printf("[btn-watcher] Home double tap detected -> audio play/pause toggle\n");
+                    home_pending_single = 0;
+                    home_double_consumed = 1;
+                    system("/opt/audiocontrol.sh pause 2>/dev/null &");
+                    show_media_card("PLAYBACK: PLAY / PAUSE TOGGLED  >||");
+                }
                 home_down = 1;
                 home_down_time = now;
                 home_combo_consumed = 0;
@@ -587,6 +604,10 @@ int main(int argc, char **argv) {
                     emit_event(ufd, EV_KEY, KEY_HOME, 0);
                     emit_syn(ufd);
                     home_long_sent = 0;
+                } else if (home_double_consumed) {
+                    /* Release of the second press of a double tap: do not
+                     * re-arm the pending single tap */
+                    home_double_consumed = 0;
                 } else {
                     /* If in media mode, single Home tap toggles Play/Pause */
                     if (media_mode) {
@@ -596,6 +617,7 @@ int main(int argc, char **argv) {
                     } else {
                         /* Normal reading: confirmed single Home tap */
                         home_pending_single = 1;
+                        home_single_time = now;
                     }
                 }
             }

@@ -17,7 +17,7 @@ The BNRV700 hardware buttons are unified across all reading, browsing, and media
 | **Home "n" (Single Tap)** | Reading | Library / Menu | Opens reader library view, file browser, or top navigation bar. |
 | **Home "n" (Single Tap)** | NetSurf | Focus URL Bar & OSK | Focuses address bar and opens on-screen keyboard with URL preview. |
 | **Home "n" (Single Tap)** | Media Mode | Play / Pause | Toggles music playback. |
-| **Home "n" (Double Tap)** | Any | App Switcher | Launches universal multi-app task switcher dialog. |
+| **Home "n" (Double Tap)** | Any | Audio Play / Pause | Toggles background music/playback from any app (shows the media card). |
 | **Home "n" (Hold >=500ms)** | Reading | Frontlight Sliders | Pops up dual Brightness and Warmth (Amber color) slider dialog. |
 | **Home + Top Left (191)** | Any | Switch to KOReader | Switches to KOReader. (If already in KOReader: triggers native Frontlight Dialog). |
 | **Home + Bottom Left (192)**| Any | Switch to Plato | Switches to Plato. (If already in Plato: toggles Frontlight LEDs). |

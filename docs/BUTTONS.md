@@ -80,27 +80,28 @@ When Media Player Mode is toggled to active:
     - Active reader renders sleep cover, saves reading position, and triggers Linux suspend (`mem > /sys/power/state`).
 
 ### 3.4 Normal Reading Mode Home Button (`KEY_HOME` / Code 102)
-  - Records `home_down_time = now`.
-  - If a single-tap was pending release (`now - last_up_timestamp <= 350ms`):
-    - **Double-Tap Detected**:
-      - Cancels pending single-tap menu and sets `home_double_consumed = 1`.
-      - Launches `/opt/bin/app-switcher` modal dialog universally (works across KOReader, Plato, NetSurf).
-      - Suspends active reading engine (`killall -STOP`).
-      - Saves screen framebuffer in RAM.
-      - Displays instant UI with buttons for **KOReader**, **Plato Reader**, **NetSurf Web Browser**, **Background Music Controls** (Prev, Play/Pause, Next, Shuffle), **Frontlight Toggle**, and **Close / Keep Reading**.
-- **Hold Timer (500ms)**:
-  - If the Home button remains depressed for >= 500ms:
-    - Emits held `KEY_HOME` press to `uinput`.
-    - Reader's long-press handler activates the native frontlight adjustment dialog.
-- **Up Event**:
-  - If held >= 500ms: emits `KEY_HOME` release.
-  - If released after double-tap: consumes event without triggering single-tap.
-  - If released < 500ms: marks single-tap pending with deadline `now + 350ms`.
-- **Timer Expiry**:
-  - If 350ms passes without a second tap:
-    - If `app-switcher` is currently visible (`/tmp/switcher_active` exists): closes it cleanly with `killall -q app-switcher` and restores background reading page with zero latency.
-    - If `netsurf-fb` is running: closes it cleanly with `killall -TERM netsurf-fb`.
-    - Otherwise: emits clean `KEY_HOME` click to `uinput` (navigates to Library / Menu).
+  - **Down Event**:
+    - Records `home_down_time = now`.
+    - If a single-tap was pending and the second press lands within 400ms of the
+      previous release (**double-tap detected**):
+      - Cancels the pending single-tap and sets `home_double_consumed = 1`.
+      - Runs `/opt/audiocontrol.sh pause` (background music/playback toggle) and
+        shows the media card. The action is identical in KOReader, Plato, and
+        NetSurf: background audio keeps playing across app switches, so a Home
+        double tap controls it from any app.
+  - **Hold Timer (500ms)**:
+    - If the Home button remains depressed for >= 500ms:
+      - Emits held `KEY_HOME` press to `uinput`.
+      - Reader's long-press handler activates the native frontlight adjustment dialog.
+  - **Up Event**:
+    - If held >= 500ms: emits `KEY_HOME` release.
+    - If released after a double-tap: consumes the event without re-arming the
+      single-tap.
+    - In media mode: single Home tap toggles Play/Pause (audio card).
+    - Otherwise: marks single-tap pending with deadline `now + 400ms`.
+  - **Timer Expiry**:
+    - If 400ms passes without a second press: emits a clean `KEY_HOME` click to
+      `uinput` (navigates to Library / Menu).
 
 ### 3.3 Page Turn Keys (`KEY_F9` - `KEY_F12`)
 - Top Left (`KEY_F10` = 192), Bottom Left (`KEY_F9` = 191).
