@@ -71,6 +71,7 @@ jobs:
           test -x downloads/toolchain_arm/bin/arm-buildroot-linux-musleabihf-gcc
           test -f downloads/netsurf_src/netsurf-all-3.11.tar.gz
           test -f downloads/alpine_sysroot/usr.tar
+          test -f downloads/alpine_sysroot/lib.tar
 
           # The input archive contains the pristine source archive rather than
           # a locally configured tree. Generated NetSurf metadata contains

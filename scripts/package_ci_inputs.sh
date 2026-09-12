@@ -13,6 +13,7 @@ required=(
     downloads/toolchain_arm
     downloads/netsurf_src/netsurf-all-3.11.tar.gz
     downloads/alpine_sysroot/usr.tar
+    downloads/alpine_sysroot/lib.tar
     downloads/apks
 )
 optional=(

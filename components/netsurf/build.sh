@@ -8,11 +8,15 @@
 # (Cyrillic, Greek, ...) can be drawn no matter what Choices says.  Rebuilding
 # with NETSURF_FB_FONTLIB=freetype is the only fix.
 #
-# The build environment is assembled from three sources and never touches the
+# The build environment is assembled from four sources and never touches the
 # device:
-#   * downloads/toolchain_arm        Buildroot GCC 13 musl armhf cross toolchain
-#   * downloads/alpine_sysroot/usr.tar   /usr/include + /usr/lib pulled from the device
-#   * downloads/apks/*.apk           -dev APKs matching the device's ABI
+#   * downloads/toolchain_arm             Buildroot GCC 13 musl armhf cross toolchain
+#   * downloads/alpine_sysroot/usr.tar    /usr/include + /usr/lib pulled from the device
+#   * downloads/alpine_sysroot/lib.tar    real /lib objects the device keeps outside /usr
+#   * downloads/apks/*.apk                -dev APKs matching the device's ABI
+# The device keeps versioned shared objects in top-level /lib and /usr/lib only
+# holds links; lib.tar carries those targets (libz, libssl, libcrypto) so the
+# usr.tar symlinks and the dev-APK .so links resolve inside the sysroot.
 # They are hardlink/extracted into one merged sysroot; the APK .pc files are
 # rewritten to absolute sysroot paths so pkg-config works without
 # PKG_CONFIG_SYSROOT_DIR (which would corrupt the in-tree prefix paths).
@@ -62,6 +66,7 @@ NS_OPTS=(
 log() { printf '==> %s\n' "$*"; }
 
 [ -d "$SRC/netsurf" ] || { echo "missing $SRC - extract netsurf-all-3.11.tar.gz first" >&2; exit 1; }
+[ -f "$DL/alpine_sysroot/lib.tar" ] || { echo "missing $DL/alpine_sysroot/lib.tar (device /lib objects: libz, libssl, libcrypto) - see docs/GITHUB_RELEASE.md" >&2; exit 1; }
 [ -x "$TOOLBIN/$TRIPLET-gcc" ] || { echo "missing toolchain in $TOOLBIN" >&2; exit 1; }
 for hosttool in perl sed install make pkg-config dpkg-deb apt-get; do
     command -v "$hosttool" >/dev/null || { echo "missing host tool: $hosttool" >&2; exit 1; }
@@ -88,6 +93,7 @@ if [ "$needs_sysroot_assembly" -eq 1 ]; then
     mkdir -p "$SYS/usr"
     cp -as "$TOOLBIN/../$TRIPLET/sysroot/." "$SYS/"
     tar xf "$DL/alpine_sysroot/usr.tar" -C "$SYS/usr"
+    tar xf "$DL/alpine_sysroot/lib.tar" -C "$SYS"
     for apk in "$DL"/apks/*.apk; do
         tar xzf "$apk" -C "$SYS" 2>/dev/null || true
     done
@@ -97,11 +103,18 @@ if [ "$needs_sysroot_assembly" -eq 1 ]; then
         -e "s|^includedir=/usr|includedir=$SYS/usr|" \
         -e "s|^libdir=/usr|libdir=$SYS/usr|"
     # The device ships shared objects only; dev APKs provide the .so links.
-    for so in "$SYS"/usr/lib/*.so.*; do
+    # Link next to each resolvable versioned object, in both /lib (toolchain and
+    # device objects) and /usr/lib (device and APK links).
+    for so in "$SYS"/lib/*.so.* "$SYS"/usr/lib/*.so.*; do
+        [ -e "$so" ] || continue
+        dir="$(dirname "$so")"
         base="${so##*/}"
         stem="${base%%.so*}"
-        [ -e "$SYS/usr/lib/$stem.so" ] || ln -sf "$base" "$SYS/usr/lib/$stem.so"
+        [ -e "$dir/$stem.so" ] || ln -sf "$base" "$dir/$stem.so"
     done
+    # The device's /usr/lib has no zlib; zlib-dev only links it into /lib.
+    # Bridge it into /usr/lib, where the rewritten zlib.pc points (-L/usr/lib).
+    [ -e "$SYS/usr/lib/libz.so" ] || ln -s ../../lib/libz.so "$SYS/usr/lib/libz.so"
 fi
 
 for target_lib in libz.so libssl.so libcrypto.so; do
