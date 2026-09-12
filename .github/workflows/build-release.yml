@@ -1,0 +1,101 @@
+name: Build release artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to create, for example v2026.09.0"
+        required: true
+        default: "v2026.09.0"
+        type: string
+      build_inputs_url:
+        description: "Immutable URL for the repository-relative CI input archive"
+        required: false
+        type: string
+      build_inputs_sha256:
+        description: "SHA-256 of build_inputs_url"
+        required: false
+        type: string
+      publish_release:
+        description: "Create a GitHub Release after the build"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      INPUT_URL: ${{ inputs.build_inputs_url || vars.BNRV700_BUILD_INPUTS_URL }}
+      INPUT_SHA256: ${{ inputs.build_inputs_sha256 || vars.BNRV700_BUILD_INPUTS_SHA256 }}
+      INPUT_TOKEN: ${{ secrets.BNRV700_BUILD_INPUTS_TOKEN }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential bash binutils cpio curl dpkg-dev flex bison \
+            gperf m4 pkg-config python3 unzip zip
+
+      - name: Download and verify build inputs
+        run: |
+          set -euo pipefail
+          if [ -z "${INPUT_URL}" ] || [ -z "${INPUT_SHA256}" ]; then
+            echo "Set build_inputs_url/build_inputs_sha256 or the matching repository variables." >&2
+            echo "See docs/GITHUB_RELEASE.md for the input archive format." >&2
+            exit 1
+          fi
+          args=(--fail --location --retry 3 --connect-timeout 20 --max-time 1800)
+          if [ -n "${INPUT_TOKEN}" ]; then
+            args+=(--header "Authorization: Bearer ${INPUT_TOKEN}")
+          fi
+          curl "${args[@]}" "${INPUT_URL}" -o /tmp/bnrv700-ci-inputs.tar.gz
+          printf '%s  %s\n' "${INPUT_SHA256}" /tmp/bnrv700-ci-inputs.tar.gz | sha256sum -c -
+          tar -xzf /tmp/bnrv700-ci-inputs.tar.gz
+          test -x downloads/toolchain_arm/bin/arm-buildroot-linux-musleabihf-gcc
+          test -d downloads/netsurf_src/netsurf-all-3.11
+          test -f downloads/alpine_sysroot/usr.tar
+
+      - name: Validate source
+        run: make test
+
+      - name: Build ARM helpers, NetSurf, and rootfs
+        run: make native netsurf rootfs
+
+      - name: Build device-matched boot image when supplied
+        run: |
+          if [ -f boot_backup.img ] && [ -x scripts/magiskboot ]; then
+            make boot
+          else
+            echo "No boot_backup.img and executable scripts/magiskboot; making a rootfs-only release."
+          fi
+
+      - name: Package release assets
+        run: VERSION="${RELEASE_TAG}" make release
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnrv700-${{ inputs.release_tag }}
+          path: build/release/bnrv700-${{ inputs.release_tag }}/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "BNRV700 ${RELEASE_TAG}" \
+            --notes-file "build/release/bnrv700-${RELEASE_TAG}/INSTALL.md" \
+            build/release/bnrv700-${RELEASE_TAG}/*

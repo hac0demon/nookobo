@@ -53,6 +53,7 @@ for the exact TWRP/ADB sequence and recovery procedure.
 ## Documentation
 
 - [Build and deployment](docs/BUILD_AND_DEPLOY.md)
+- [GitHub releases and CI artifacts](docs/GITHUB_RELEASE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Hardware](docs/HARDWARE.md)
 - [User guide](docs/USER_GUIDE.md)

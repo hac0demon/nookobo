@@ -22,3 +22,7 @@ Native outputs from `make native` and `make netsurf` are copied into the
 payload only after they pass the ARM ABI checks. The payload is a tar archive,
 not a filesystem image, so TWRP/ADB can extract it into `/data/linuxroot`
 without repartitioning the device.
+
+`INSTALL.md` is the release-install template used by
+`scripts/package_release.sh`. The generated release contains a checksummed
+rootfs archive, an optional device-matched boot image, and a convenience ZIP.
