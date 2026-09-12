@@ -26,7 +26,7 @@ NATIVE_BINARIES := \
 	$(BUILD_DIR)/epdc_probe
 
 .PHONY: all native system netsurf koreader boot patch-boot rootfs payload release ci-inputs deploy \
-	test test-boot push-rootfs clean distclean help device-check
+	test test-boot push-rootfs twrp clean distclean help device-check
 
 # Full host-side build. Downloads and device images are intentionally not
 # checked into Git; see docs/BUILD_AND_DEPLOY.md for prerequisites.
@@ -98,7 +98,12 @@ test-boot: $(BOOT_OUT)
 	bash "$(ROOT_DIR)/scripts/deploy.sh" --test-boot
 
 push-rootfs: $(PAYLOAD_TAR)
+	bash "$(ROOT_DIR)/scripts/twrp_entry.sh" verify </dev/null
 	bash "$(ROOT_DIR)/scripts/deploy.sh" --push-rootfs
+
+# Get the BNRV700 (Quill) into Ryogo's TWRP and prepare /data (workflow + automation).
+twrp:
+	bash "$(ROOT_DIR)/scripts/twrp_entry.sh" --enter-recovery
 
 clean:
 	rm -rf "$(BUILD_DIR)" "$(ROOT_DIR)/staging"
@@ -117,6 +122,7 @@ help:
 	@echo "  make test         Run shell, Lua, layout, and ARM ABI checks"
 	@echo "  make device-check  Run the on-device health check (needs adb + running chroot)"
 	@echo "  make test-boot    Non-destructive fastboot boot test"
+	@echo "  make twrp         Get the Quill into Ryogo's TWRP and mount /data"
 	@echo "  make push-rootfs  Deploy payload through TWRP ADB"
 	@echo "  make deploy       Open the guided deployment assistant"
 	@echo "  make release      Package checksummed GitHub release assets"

@@ -36,7 +36,8 @@ guide](docs/BUILD_AND_DEPLOY.md). In brief:
 make all       # native helpers, NetSurf, patched boot image, rootfs payload
 make test      # checks source layout, shell, Lua, and target ABI
 make test-boot # safe RAM-only fastboot test
-make push-rootfs  # upload/extract payload from TWRP ADB
+make twrp      # get the Quill into Ryogo's TWRP + mount /data
+make push-rootfs  # verify TWRP, then upload/extract payload from TWRP ADB
 ```
 
 Do not flash a boot image until the device-matched stock `boot_backup.img` has
@@ -44,10 +45,13 @@ been preserved and `fastboot boot build/boot_linux.img` has been tested.
 
 ## Deployment model
 
-The rootfs payload is extracted into `/data/linuxroot` from a Ryogo/TWRP-style
-recovery environment with `/data` mounted and writable. The patched boot image
-starts `components/kernel/overlay/boot_linux.sh`, which enters the Alpine
-userspace and launches the system supervisor. See [BUILD_AND_DEPLOY.md](docs/BUILD_AND_DEPLOY.md)
+The rootfs payload is extracted into `/data/linuxroot` from Ryogo's TWRP for
+`nook_ntx_6sl` (`Ryogo-X/nook_ntx_6sl_twrp`, image `twrp_quill.img`) with
+`/data` mounted and writable. `make twrp` drives the TWRP entry (hardware key
+method or `adb reboot recovery`) and mounts `/data`; `make push-rootfs` verifies
+TWRP + `/data`, then deploys. The patched boot image starts
+`components/kernel/overlay/boot_linux.sh`, which enters the Alpine userspace
+and launches the system supervisor. See [BUILD_AND_DEPLOY.md](docs/BUILD_AND_DEPLOY.md)
 for the exact TWRP/ADB sequence and recovery procedure.
 
 ## Documentation

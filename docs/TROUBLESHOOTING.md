@@ -30,6 +30,21 @@ To test the Linux boot image in RAM without writing to eMMC:
 fastboot boot build/boot_linux.img
 ```
 
+### 1.4 Entering Ryogo TWRP Recovery
+
+Ryogo's TWRP for `nook_ntx_6sl` ("Quill") is `Ryogo-X/nook_ntx_6sl_twrp`
+(image `twrp_quill.img`, release `3.3.1.v2`). Install it once via fastboot with
+`fastboot flash recovery downloads/twrp_quill.img`, then enter it either from
+the running OS (`adb reboot recovery`) or by the hardware key method:
+
+1. Power off the Nook completely.
+2. Connect it to the computer with a USB cable (stable detection, proper boot cycle).
+3. Give a short press to the Power button, then release it.
+4. Immediately press and hold the Home ("n") button right after releasing Power.
+5. Keep holding Home until the device boots into the TWRP recovery UI.
+
+`make twrp` (or `scripts/twrp_entry.sh`) automates the entry and mounts `/data`.
+
 ---
 
 ## 2. Touchscreen & Input Diagnostics

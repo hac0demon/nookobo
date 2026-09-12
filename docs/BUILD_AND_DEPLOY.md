@@ -76,21 +76,47 @@ before flashing anything.
 
 ### 2. TWRP rootfs deployment
 
-Ryogo/TWRP-style recovery is required for the first payload installation:
+Ryogo's TWRP for `nook_ntx_6sl` ("Quill") is required before the first payload
+installation. The project is `Ryogo-X/nook_ntx_6sl_twrp`; the device-specific
+recovery image is `twrp_quill.img` (release `3.3.1.v2`). `scripts/twrp_entry.sh`
+downloads and verifies that image and drives the entry; `make twrp` runs it.
 
-1. Boot the device into TWRP recovery.
-2. In TWRP, mount **Data**. The `/data` partition must be writable and
-   decrypted if encryption is enabled.
-3. Connect USB and verify `adb devices` shows the recovery device.
-4. Run:
+**One-time install** (writes TWRP to the recovery partition, then never repeat):
 
-   ```sh
-   make push-rootfs
-   ```
+```sh
+bash scripts/twrp_entry.sh --download         # fetch twrp_quill.img -> downloads/
+adb reboot fastboot                           # enter fastboot
+fastboot devices                              # confirm fastboot
+fastboot flash recovery downloads/twrp_quill.img
+fastboot reboot
+```
 
-   This creates `/data/linuxroot`, pushes `components/kernel/overlay/boot_linux.sh`
-   to `/data/boot_linux.sh`, uploads the payload, extracts it, and removes the
-   temporary archive.
+`scripts/twrp_entry.sh --install` automates this end-to-end.
+
+**Enter TWRP recovery afterward** - hardware key method:
+
+1. Power off your Nook completely.
+2. Connect the device to your computer using a USB cable (this ensures stable
+   detection and helps trigger the proper boot cycle).
+3. Give a short press to the Power button, then release it.
+4. Immediately press and hold the Home button (the "n" button) right after
+   releasing the power button.
+5. Keep holding the Home button until the device boots into the TWRP recovery
+   interface.
+
+Alternative (no key fiddling): from the running OS, `adb reboot recovery`.
+`make twrp` (or `scripts/twrp_entry.sh --enter-recovery`) does this, then mounts
+`/data`.
+
+**Push the rootfs payload** (device in TWRP, `/data` mounted and writable):
+
+```sh
+make push-rootfs
+```
+
+This verifies TWRP + `/data`, then creates `/data/linuxroot`, pushes
+`components/kernel/overlay/boot_linux.sh` to `/data/boot_linux.sh`,
+uploads the payload, extracts it, and removes the temporary archive.
 
 If recovery ADB cannot see `/data`, stop and fix the TWRP mount/decryption
 state first. Do not use a normal Android shell for the initial extraction if
