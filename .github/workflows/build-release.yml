@@ -47,9 +47,18 @@ jobs:
       - name: Download and verify build inputs
         run: |
           set -euo pipefail
+          # Repository variables are often pasted with a trailing newline.
+          # Remove surrounding whitespace before passing the URL to curl or
+          # the digest to sha256sum.
+          INPUT_URL="$(printf '%s' "${INPUT_URL}" | tr -d '[:space:]')"
+          INPUT_SHA256="$(printf '%s' "${INPUT_SHA256}" | tr -d '[:space:]')"
           if [ -z "${INPUT_URL}" ] || [ -z "${INPUT_SHA256}" ]; then
             echo "Set build_inputs_url/build_inputs_sha256 or the matching repository variables." >&2
             echo "See docs/GITHUB_RELEASE.md for the input archive format." >&2
+            exit 1
+          fi
+          if ! [[ "${INPUT_SHA256}" =~ ^[[:xdigit:]]{64}$ ]]; then
+            echo "INPUT_SHA256 must contain exactly 64 hexadecimal characters." >&2
             exit 1
           fi
           args=(--fail --location --retry 3 --connect-timeout 20 --max-time 1800)
@@ -60,8 +69,16 @@ jobs:
           printf '%s  %s\n' "${INPUT_SHA256}" /tmp/bnrv700-ci-inputs.tar.gz | sha256sum -c -
           tar -xzf /tmp/bnrv700-ci-inputs.tar.gz
           test -x downloads/toolchain_arm/bin/arm-buildroot-linux-musleabihf-gcc
-          test -d downloads/netsurf_src/netsurf-all-3.11
+          test -f downloads/netsurf_src/netsurf-all-3.11.tar.gz
           test -f downloads/alpine_sysroot/usr.tar
+
+          # The input archive contains the pristine source archive rather than
+          # a locally configured tree. Generated NetSurf metadata contains
+          # absolute paths, so always extract it on the runner.
+          rm -rf downloads/netsurf_src/netsurf-all-3.11
+          tar -xzf downloads/netsurf_src/netsurf-all-3.11.tar.gz \
+            -C downloads/netsurf_src
+          test -d downloads/netsurf_src/netsurf-all-3.11
 
       - name: Validate source
         run: make test

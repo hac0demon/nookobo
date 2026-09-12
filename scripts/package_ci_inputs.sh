@@ -8,7 +8,7 @@ INCLUDE_BOOT="${INCLUDE_BOOT:-1}"
 
 required=(
     downloads/toolchain_arm
-    downloads/netsurf_src/netsurf-all-3.11
+    downloads/netsurf_src/netsurf-all-3.11.tar.gz
     downloads/alpine_sysroot/usr.tar
     downloads/apks
 )
@@ -39,9 +39,6 @@ fi
 mkdir -p "$(dirname "${OUTPUT}")"
 (
     cd "${ROOT_DIR}"
-    tar -czf "${OUTPUT}" \
-        --exclude='downloads/netsurf_src/netsurf-all-3.11/inst-*' \
-        --exclude='downloads/netsurf_src/netsurf-all-3.11/*/obj' \
-        "${paths[@]}"
+    tar -czf "${OUTPUT}" "${paths[@]}"
 )
 sha256sum "${OUTPUT}"
