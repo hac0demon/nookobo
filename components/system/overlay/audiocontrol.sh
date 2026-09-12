@@ -139,11 +139,11 @@ run_daemon() {
 stop_playback() {
     echo "STOPPED" > "$STATUSFILE"
     if [ -f "$PLAYER_PIDFILE" ]; then
-        kill -9 $(cat "$PLAYER_PIDFILE" 2>/dev/null) 2>/dev/null || true
+        kill -9 "$(cat "$PLAYER_PIDFILE" 2>/dev/null)" 2>/dev/null || true
         rm -f "$PLAYER_PIDFILE"
     fi
     if [ -f "$PIDFILE" ]; then
-        kill -9 $(cat "$PIDFILE" 2>/dev/null) 2>/dev/null || true
+        kill -9 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null || true
         rm -f "$PIDFILE"
     fi
     pkill -9 -x mpg123 2>/dev/null || true
@@ -263,7 +263,7 @@ case "$1" in
 
     status)
         CUR="STOPPED"
-        if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE" 2>/dev/null) 2>/dev/null; then
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
             CUR=$(cat "$STATUSFILE" 2>/dev/null || echo "PLAYING")
         fi
         TRACK=$(cat "$TRACKFILE" 2>/dev/null || echo "")

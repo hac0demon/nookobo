@@ -45,6 +45,15 @@ else
     echo "    skipped: no host LuaJIT (device KOReader LuaJIT can validate plugins)"
 fi
 
+echo "==> Running shellcheck when available"
+if command -v shellcheck >/dev/null 2>&1; then
+    while IFS= read -r -d '' script; do
+        shellcheck --severity=warning "${script}"
+    done < <(find "${ROOT_DIR}/scripts" "${ROOT_DIR}/components" -type f -name '*.sh' -print0)
+else
+    echo "    skipped: no host shellcheck (install it to enable this gate; CI installs it)"
+fi
+
 echo "==> Checking ARM ABI of built binaries when present"
 if command -v readelf >/dev/null 2>&1; then
     for binary in "${BUILD_DIR}/btn-watcher" "${BUILD_DIR}/app-switcher" \

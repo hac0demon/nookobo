@@ -40,7 +40,7 @@ if ! ifconfig wlan0 2>/dev/null | grep -q "inet addr:"; then
         /opt/koreader/obtain-ip.sh
     fi
     # Wait up to 6 seconds for an IP address and default route
-    for i in 1 2 3 4 5 6; do
+    for _ in 1 2 3 4 5 6; do
         if ifconfig wlan0 2>/dev/null | grep -q "inet addr:"; then
             echo "[start_browser] Network is connected: $(ifconfig wlan0 | grep 'inet addr:')"
             break

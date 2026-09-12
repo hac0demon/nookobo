@@ -33,7 +33,7 @@ case "$ACTION" in
         echo "$NOW_SEC,$NOW_STR,$CAP,$VOLT_MV,$STATUS,$TEMP_C,$TIME_EMPTY" >> "$LOG_FILE"
 
         # Keep rolling last 500 entries (~8 hours at 1/min)
-        if [ $(wc -l < "$LOG_FILE") -gt 550 ]; then
+        if [ "$(wc -l < "$LOG_FILE")" -gt 550 ]; then
             head -n 1 "$LOG_FILE" > "${LOG_FILE}.tmp"
             tail -n 500 "$LOG_FILE" >> "${LOG_FILE}.tmp"
             mv -f "${LOG_FILE}.tmp" "$LOG_FILE"
@@ -59,7 +59,7 @@ case "$ACTION" in
 
         # Calculate discharge rate from CSV if available
         RATE_STR="Calculating..."
-        if [ -f "$LOG_FILE" ] && [ $(wc -l < "$LOG_FILE") -gt 5 ]; then
+        if [ -f "$LOG_FILE" ] && [ "$(wc -l < "$LOG_FILE")" -gt 5 ]; then
             FIRST_RECORD=$(tail -n 30 "$LOG_FILE" | head -n 1)
             LAST_RECORD=$(tail -n 1 "$LOG_FILE")
 
@@ -73,7 +73,7 @@ case "$ACTION" in
 
             if [ "$DELTA_T" -gt 120 ] 2>/dev/null; then
                 HOURLY_RATE=$(awk "BEGIN {printf \"%.1f\", ($DELTA_C / $DELTA_T) * 3600}")
-                if [ $(awk "BEGIN {print ($HOURLY_RATE > 0)}") -eq 1 ]; then
+                if [ "$(awk "BEGIN {print ($HOURLY_RATE > 0)}")" -eq 1 ]; then
                     RATE_STR="${HOURLY_RATE}% / hr"
                 else
                     RATE_STR="Idle / Charging"

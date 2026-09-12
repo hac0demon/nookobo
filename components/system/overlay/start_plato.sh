@@ -5,7 +5,7 @@ export LD_LIBRARY_PATH="/opt/plato/libs:/lib:$LD_LIBRARY_PATH"
 export LD_PRELOAD="/opt/plato/libs/libbnrv700_plato_shim.so"
 export PRODUCT="daylight"
 export MODEL_NUMBER="381"
-cd /opt/plato
+cd /opt/plato || exit
 
 echo "[start_plato] Launching Plato Document Reader at $(date)..."
 

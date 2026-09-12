@@ -8,7 +8,6 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOWNLOADS_DIR="${ROOT_DIR}/downloads"
 STAGING_DIR="${ROOT_DIR}/staging"
 BUILD_DIR="${ROOT_DIR}/build"
-KERNEL_OVERLAY="${ROOT_DIR}/components/kernel/overlay"
 KOREADER_OVERLAY="${ROOT_DIR}/components/koreader/overlay"
 NETSURF_OVERLAY="${ROOT_DIR}/components/netsurf/overlay"
 SYSTEM_OVERLAY="${ROOT_DIR}/components/system/overlay"
@@ -99,7 +98,7 @@ ar -x "${GLIBC_FILE}" --output="${GLIBC_TMP}"
 tar -xf "${GLIBC_TMP}"/data.tar.* -C "${GLIBC_TMP}"
 cp -a "${GLIBC_TMP}"/lib/arm-linux-gnueabihf/* "${STAGING_DIR}/lib/"
 
-rm -rf "${GLIBC_TMP}"/*
+rm -rf "${GLIBC_TMP:?}"/*
 ar -x "${LIBGCC_FILE}" --output="${GLIBC_TMP}"
 tar -xf "${GLIBC_TMP}"/data.tar.* -C "${GLIBC_TMP}"
 cp -a "${GLIBC_TMP}"/lib/arm-linux-gnueabihf/* "${STAGING_DIR}/lib/"

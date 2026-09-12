@@ -32,7 +32,7 @@ if ! grep -q "^8723ds " /proc/modules; then
 fi
 
 # 3. Wait up to 3 seconds for network interface to appear
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     if [ -d "/sys/class/net/${INTERFACE}" ]; then
         echo "[enable-wifi.sh] Interface ${INTERFACE} detected in sysfs."
         break
@@ -100,7 +100,7 @@ if ! pkill -0 wpa_supplicant 2>/dev/null; then
     wpa_supplicant -D "${WPA_DRIVER}" -i "${INTERFACE}" -c /etc/wpa_supplicant/wpa_supplicant.conf -C /var/run/wpa_supplicant -B
 
     # Wait up to 2 seconds for control socket to be created
-    for i in 1 2 3 4 5 6 7 8 9 10; do
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
         if [ -S "/var/run/wpa_supplicant/${INTERFACE}" ]; then
             echo "[enable-wifi.sh] Control socket /var/run/wpa_supplicant/${INTERFACE} is ready."
             break

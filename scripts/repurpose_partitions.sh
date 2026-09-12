@@ -24,7 +24,7 @@ mkdir -p "${BACKUP_DIR}"
 wait_for_twrp() {
     echo "==> Checking for TWRP recovery connection via ADB..."
     local state=""
-    for i in $(seq 1 30); do
+    for _ in $(seq 1 30); do
         state=$(adb get-state 2>/dev/null || true)
         if [ "${state}" = "recovery" ] || [ "${state}" = "device" ]; then
             if adb shell "[ -f /sbin/recovery ] || grep -qi recovery /proc/cmdline" 2>/dev/null; then
@@ -38,7 +38,7 @@ wait_for_twrp() {
     echo "==> Device is not in recovery. Attempting reboot into TWRP recovery..."
     adb reboot recovery 2>/dev/null || true
     echo "==> Waiting for TWRP to load (up to 45s)..."
-    for i in $(seq 1 45); do
+    for _ in $(seq 1 45); do
         if adb shell "[ -f /sbin/recovery ] || grep -qi recovery /proc/cmdline" 2>/dev/null; then
             echo "==> TWRP recovery active."
             return 0

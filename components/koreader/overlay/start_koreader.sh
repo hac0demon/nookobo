@@ -68,7 +68,7 @@ apply_bnrv700_shims() {
 # Initial synchronization of hardware shims
 apply_bnrv700_shims
 
-cd /opt/koreader
+cd /opt/koreader || exit
 
 # KOReader's bundled OTA package.index (including the 2024.07 bundle) expects
 # this marker while creating the local zsync input package.  Some release

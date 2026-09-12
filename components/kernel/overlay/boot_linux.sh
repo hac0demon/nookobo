@@ -36,7 +36,7 @@ fi
 
 # Defuse hardware watchdog if present and start background petter loop
 if [ -e /dev/watchdog ]; then
-    echo -n 'V' > /dev/watchdog 2>/dev/null || true
+    printf 'V' > /dev/watchdog 2>/dev/null || true
     ( while true; do
         if [ -e /dev/watchdog ]; then
             echo 1 > /dev/watchdog 2>/dev/null || true
