@@ -1,0 +1,55 @@
+Using Double-Click Power to toggle the frontlight is an ergonomic and established pattern in e-reader design:Onyx Boox & Boyue/Likebook frequently map double-tap power or power-button combos to frontlight toggles or screen refreshes.Separation of Concerns: It keeps the Power button strictly bound to physical hardware power/illumination states (Single = Sleep/Wake, Double = Light On/Off, Long = Force Powerdown), leaving the Home button completely dedicated to navigation and reading (Single = Library/Menu, Double = App Switcher, Long = Light Dialog).Because you have direct access to the Linux input subsystem, all buttons on the Nook BNRV700 are 100% programmable.Hardware Button Inventory & Event CodesOn your 4.1.15 Device Tree (imx6sl-nook-quill.dts), all physical switches are exposed under /dev/input/event0 via gpio-keys:Physical KeyLinux Evdev NameLinux KeycodeRecommended Primary ActionRecommended Double-Tap / ChordPower ButtonKEY_POWER116Sleep / Wake (mem)Double Click: Frontlight Toggle ON/OFFHome ("n")KEY_HOME102Library / Reader MenuDouble Click: App Switcher (KOReader $\leftrightarrow$ Plato)Top LeftKEY_F10192Page Turn BackwardChord with Home: Invert Colors / Dark ModeBottom LeftKEY_F9191Page Turn Forward—Top RightKEY_F11193Page Turn Backward—Bottom RightKEY_F12194Page Turn Forward—How to Implement Double-Click Power in LinuxThe cleanest way to handle multi-click detection without adding latency to the main UI is a tiny background daemon or an event multiplexer like evsieve or triggerhappy (thd).1. Using triggerhappy (Standard Lightweight Daemon)triggerhappy has negligible memory usage (< 1 MB RAM) and natively supports multi-press and hold events:Install it in Alpine:Bashapk add triggerhappy
+Create /etc/triggerhappy/triggers.d/nook_keys.conf:Plaintext# Single click power -> Handled by sleep/wake script
+KEY_POWER 1         /opt/scripts/power_press.sh
+
+# Double-click power within 400ms -> Toggle Frontlight
+# (triggerhappy tracks release and repeat states cleanly)
+2. Self-Contained C / Shell Event Interceptor (/opt/bin/btn-watcher)A simple C daemon or input loop monitoring /dev/input/event0 with select():C/* Pseudocode logic for power button double-tap */
+if (ev.type == EV_KEY && ev.code == KEY_POWER && ev.value == 1) { // Key down
+    uint64_t now = get_epoch_ms();
+    if (now - last_power_press < 400) {
+        // Double-click detected: cancel pending sleep, toggle frontlight
+        system("/opt/scripts/toggle_frontlight.sh");
+        skip_single_click = true;
+    } else {
+        last_power_press = now;
+        // Schedule single-click sleep check after 400ms timeout
+    }
+}
+The Frontlight Toggle Script (/opt/scripts/toggle_frontlight.sh)When the double-click fires, this script checks whether the LEDs are currently active. If on, it records the current level and sets brightness to 0. If off, it restores the previous brightness:Bash#!/bin/sh
+STATE_FILE="/tmp/frontlight_saved_level"
+SYS_COOL="/sys/class/backlight/backlight_cool/brightness"
+SYS_WARM="/sys/class/backlight/backlight_warm/brightness"
+
+CURRENT_COOL=$(cat "$SYS_COOL" 2>/dev/null || echo 0)
+
+if [ "$CURRENT_COOL" -gt 0 ]; then
+    # Light is currently ON -> Save current levels and turn OFF
+    echo "$CURRENT_COOL" > "$STATE_FILE"
+    echo 0 > "$SYS_COOL"
+    echo 0 > "$SYS_WARM"
+else
+    # Light is currently OFF -> Restore previous level (or default to 32)
+    RESTORE_VAL=32
+    if [ -f "$STATE_FILE" ]; then
+        RESTORE_VAL=$(cat "$STATE_FILE")
+    fi
+    echo "$RESTORE_VAL" > "$SYS_COOL"
+fi
+The Resulting Button ArchitecturePower Button:Single Tap $\to$ Instant Sleep / Wake (toggles echo mem > /sys/power/state).Double Tap $\to$ Toggle Frontlight ON/OFF instantly without entering any menu.Home Button:Single Tap $\to$ Return to Library / Open Reader Menu.Double Tap $\to$ Switch between KOReader and Plato.Long Press $\to$ Open full Frontlight Brightness & Warmth adjustments slider.
+
+The Unified Solution: uinput Virtual MultiplexingRather than configuring Plato and KOReader separately, place a small supervisor daemon between the physical hardware and the readers using the Linux uinput kernel module (already enabled in your defconfig via CONFIG_INPUT_UINPUT=y).[ Physical Buttons: /dev/input/event0 ]
+                   │
+                   ▼
+       [ Nook Key Supervisor Daemon ]
+        │                       │
+        │ Intercepts:           │ Passes Through:
+        │ - Double-tap Power    │ - Single-tap Home (KEY_HOME)
+        │ - Double-tap Home     │ - Page Turn Keys (F9–F12)
+        │ - Long-press Power    │
+        ▼                       ▼
+   [ OS Action ]         [ Virtual Device: /dev/input/event4 ]
+   - Toggle sysfs PWM           │
+   - Swap Reader Process        ├──> KOReader (listens to event4)
+                                └──> Plato (listens to event4)
+Physical Isolation: The supervisor daemon opens /dev/input/event0 with EVIOCGRAB so the raw hardware events are hidden from userspace apps.State Tracking: The daemon tracks click counts and millisecond timestamps:Single Power Tap: Sends suspend command (echo mem > /sys/power/state).Double Power Tap: Directly modifies /sys/class/backlight/.../brightness (toggling lights on/off immediately).Double Home Tap: Sends SIGTERM to the active reader, updates /tmp/current_app, and launches the other reader.Single Home / Page Keys: Emitted untouched onto a virtual uinput event node (/dev/input/event4).Identical Reader Config: Both KOReader and Plato are pointed to the virtual event device (KOR_INPUT_KEYS=/dev/input/event4). To both applications, the buttons appear as standard, single-stroke hardware presses.How Each Action Behaves Across Both ReadersTrigger EventHandled ByAction in KOReaderAction in PlatoSingle Power TapSupervisorSuspends device; KOReader saves book state and renders sleep cover.Suspends device; Plato saves book state and renders intermission cover.Double Power TapSupervisorInstant Frontlight Toggle. sysfs PWM updates directly without interrupting reading or redrawing the page.Instant Frontlight Toggle. sysfs PWM updates directly without interrupting reading or redrawing the page.Single Home TapReader (uinput)Opens the KOReader top menu or returns to the file manager.Opens the Plato top menu or returns to the library view.Double Home TapSupervisorCleanly exits KOReader; launches Plato at its last opened book in ~1.5s.Cleanly exits Plato; launches KOReader at its last opened book in ~1.5s.Long Home TapReader (uinput)Opens native Frontlight Dialog (via event_map.lua mapping).Opens native Frontlight / Warmth Sliders.Side Page KeysReader (uinput)Turns page forward / backward.Turns page forward / backward.This setup guarantees that your gestures, lighting toggles, and shortcuts remain identical regardless of which reading engine you are using.

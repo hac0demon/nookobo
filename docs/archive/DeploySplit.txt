@@ -1,0 +1,14 @@
+system	/dev/block/mmcblk0p5	~360 MB	Android OS (/system)	Yes (Potentially)
+cache	/dev/block/mmcblk0p6	~342 MB	Android recovery cache	Yes (Potentially)
+
+Repurposing /system (360 MB):
+
+    If you are completely bypassing Android, the 360 MB /system partition is technically sitting idle.
+
+    You could format /dev/block/mmcblk0p5 as ext4 and mount it as your Alpine rootfs (/data/linuxroot), keeping your base operating system physically separate from your books and user data on /data.
+
+    The Catch: 360 MB is tight. While Alpine minirootfs is ~15 MB, once you install KOReader (~75 MB), NetSurf + fonts (~40 MB), Syncthing (~35 MB), and glibc/shared libraries, you will use ~250–300 MB, leaving very little headroom for package manager updates or temporary /tmp files.
+
+Repurposing /cache (342 MB):
+
+    Can be formatted and used as swap space (mkswap /dev/block/mmcblk0p6 && swapon ...) or a dedicated scratch partition for NetSurf/browser disk caches so browser temp files don't clutter your main storage.

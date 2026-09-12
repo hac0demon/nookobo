@@ -48,7 +48,7 @@ If touch is not registering in KOReader:
    ```
    You should see:
    `INFO BNRV700: handleTouchEv is legacy: true`
-3. Ensure that `/opt/koreader/patches/1-bnrv700-hardware.lua` exists and matches `configs/1-bnrv700-hardware.lua`.
+3. Ensure that `/opt/koreader/patches/1-bnrv700-hardware.lua` exists and matches `components/koreader/overlay/1-bnrv700-hardware.lua`.
 
 ### 2.2 Buttons Not Responding
 1. Check if the button supervisor daemon is active:
@@ -86,7 +86,7 @@ If touch is not registering in KOReader:
    ```bash
    # Test white / cool LEDs:
    echo 50 > /sys/class/backlight/mxc_msp430_fl.0/brightness
-   
+
    # Test amber / warm LEDs:
    echo 50 > /sys/class/backlight/lm3630a_ledb/brightness
    ```

@@ -4,19 +4,36 @@ Welcome to your standalone Alpine Linux operating system on the **Barnes & Noble
 
 ---
 
-## 1. Physical Hardware Controls
+## 1. Physical Hardware Controls & Quick Reference
 
-The BNRV700 hardware buttons have been unified across both reading environments (KOReader and Plato):
+The BNRV700 hardware buttons are unified across all reading, browsing, and media environments by the `/opt/bin/btn-watcher` supervisor daemon.
 
-| Button Gesture | Action | Description |
-| :--- | :--- | :--- |
-| **Power Button (Single Tap)** | Sleep / Wake | Immediately suspends the device. The screen displays the cover of the book currently being read. Tapping again resumes instantaneously. |
-| **Power Button (Double Tap)** | Frontlight Toggle | Toggles the frontlight completely ON or OFF instantly without opening any menus or redrawing the page. |
-| **Home "n" (Single Tap)** | Library / Top Menu | Opens the reader's file browser, library view, or top navigation bar. |
-| **Home "n" (Double Tap)** | Switch Reader | Instantly switches between **KOReader** and **Plato** in ~1.5 seconds, restoring the last opened book. |
-| **Home "n" (Hold >=500ms)** | Frontlight Slider Dialog | Opens the full dual-slider dialog for overall Brightness and Warmth (Amber color temperature). |
-| **Side Bezel Buttons (F9 - F12)**| Page Turn Forward/Back | The top buttons turn one page backward; the bottom buttons turn one page forward. |
-| **Magnetic Smart Cover** | Cover Sleep / Wake | Closing a magnetic folio cover automatically puts the reader to sleep; opening it wakes the device. |
+### 1.1 Quick Reference Cheat Sheet
+
+| Gesture / Shortcut | Mode / App | Action | Description |
+| :--- | :--- | :--- | :--- |
+| **Power (Single Tap)** | Any | Sleep / Wake | Immediately suspends the device with current book cover. Resumes instantaneously. |
+| **Power (Double Tap)** | Any | Frontlight Toggle | Toggles frontlight ON or OFF instantly without opening menus or redrawing the page. |
+| **Home "n" (Single Tap)** | Reading | Library / Menu | Opens reader library view, file browser, or top navigation bar. |
+| **Home "n" (Single Tap)** | NetSurf | Focus URL Bar & OSK | Focuses address bar and opens on-screen keyboard with URL preview. |
+| **Home "n" (Single Tap)** | Media Mode | Play / Pause | Toggles music playback. |
+| **Home "n" (Double Tap)** | Any | App Switcher | Launches universal multi-app task switcher dialog. |
+| **Home "n" (Hold >=500ms)** | Reading | Frontlight Sliders | Pops up dual Brightness and Warmth (Amber color) slider dialog. |
+| **Home + Top Left (191)** | Any | Switch to KOReader | Switches to KOReader. (If already in KOReader: triggers native Frontlight Dialog). |
+| **Home + Bottom Left (192)**| Any | Switch to Plato | Switches to Plato. (If already in Plato: toggles Frontlight LEDs). |
+| **Home + Top Right (193)** | Any | NetSurf Web Browser | Launches NetSurf. (If already in NetSurf: closes browser and returns to reading). |
+| **Home + Bottom Right (194)**| Any | Media Player Mode | Toggles 5-button hardware media playback mode (foreground vs background). |
+| **Magnetic Smart Cover** | Any | Cover Sleep / Wake | Closing folio cover sleeps device; opening wakes it up immediately. |
+
+### 1.2 Side Bezel Buttons by Context
+
+| Button | Reading Mode | NetSurf Browser Mode | Media Player Mode |
+| :--- | :--- | :--- | :--- |
+| **Top Left (191)** | Page Turn Back | **Page Up** (Scroll up) | **Previous Track** (`\|<<`) |
+| **Bottom Left (192)** | Page Turn Forward | **Page Down** (Scroll down) | **Shuffle Toggle** (ON/OFF) |
+| **Top Right (193)** | Page Turn Back | **Back / Dismiss OSK** | **Next Track** (`>>\|`) |
+| **Bottom Right (194)** | Page Turn Forward | **Toggle OSK** | **Play / Pause** |
+
 
 ---
 
@@ -33,14 +50,19 @@ You have two top-tier open-source reading engines installed side-by-side:
 - **Formats Supported**: EPUB, PDF, CBZ.
 - **Key Features**: Written in Rust for near-instant rendering and ultra-low latency page turns.
 - **Frontlight Control**: Tapping the sun icon in the top system bar displays dual sliders for Intensity and Warmth.
+- **Frontlight presets**: Pressing **Save** adds a preset named with the current time, such as `20:00`. Tap that time label later to restore the saved Intensity/Warmth values; remove unwanted presets from the same dialog.
 - **Switching to Plato**:
   - Double-tap the physical **Home ("n")** button at any time.
   - OR inside KOReader: tap **Tools (Wrench/Cog icon) > Plato > Switch to Plato**.
 
-### 2.3 Updating Plato via Wi-Fi (OTA)
-1. Turn on Wi-Fi inside KOReader or via the top menu.
-2. Tap **Tools > Plato > Update Plato (Latest Release)**.
-3. Confirm the dialog. KOReader will download the latest binary from GitHub, unpack it into `/opt/plato`, and notify you upon completion.
+### 2.3 Updating Plato from KOReader (Wi-Fi)
+
+1. Turn Wi-Fi on in KOReader and wait until the device has connected.
+2. Open **Tools > Plato > Update Plato (Latest Release)**.
+3. Confirm the update and leave KOReader open while the download and installation finish. The updater downloads the current `plato-<version>.zip` asset from the official Plato GitHub release and installs it into `/opt/plato`.
+4. When KOReader reports success, switch to Plato from **Tools > Plato > Switch to Plato**, or use the Plato hardware shortcut. Plato will start with your existing books, settings, and BNRV700 hardware support.
+
+The update does not replace `Settings.toml` or the BNRV700 display/frontlight shim. Do not launch Plato while an update is in progress. If the update fails, check Wi-Fi and review `/tmp/plato_update.log`; the existing Plato installation remains in place until a complete archive has been downloaded and verified.
 
 ---
 
@@ -86,3 +108,51 @@ The BNRV700 features a **3.5mm Headphone Jack** powered by an internal Realtek A
   ssh root@<NOOK_IP_ADDRESS>
   ```
 - No password is required by default.
+
+---
+
+## 5. Web Browsing (NetSurf)
+
+The BNRV700 includes an optimized, standalone build of the **NetSurf Web Browser** with high-DPI scaling, full hardware button navigation, a direct framebuffer on-screen keyboard (OSK), and smartphone remote typing.
+
+### 5.1 Launching NetSurf & E-Ink Optimizations
+- **Hardware Shortcut**: Hold **Home ("n")** and press the **Top Right side button (193)**.
+- **Within KOReader**: Tap **Tools (Cog icon) > NetSurf Browser > Launch NetSurf**.
+- **Exit Browser**: Press the **Top Right side button (193)** (or Home+TR chord) to return to your book.
+- **Zero-Ghosting Display Engine**: NetSurf automatically performs a full-screen hardware white wipe and a 16-level grayscale (GC16) E-ink flashing refresh upon launch and on page renders, completely eliminating afterimages and ghosting from the previous reader application.
+- **High-Legibility URL Toolbar**: The top toolbar features a crisp, double-scaled (16x32 bold) address bar formatted specifically for the 300 DPI Carta panel so full URLs and search queries remain sharp and instantly readable.
+- **Power Conservation**: Wi-Fi is automatically enabled upon launching NetSurf and restored to its previous state when closing the browser.
+
+### 5.2 Physical Button Navigation
+While browsing, the 4 side bezel buttons provide ergonomic one-handed navigation:
+
+| Button | Function | Description |
+| :--- | :--- | :--- |
+| **Top Left (191)** | **Page Up** | Scrolls up one screen. |
+| **Bottom Left (192)** | **Page Down** | Scrolls down one screen. |
+| **Top Right (193)** | **Back / Dismiss OSK** | Goes back in history, or hides the keyboard if open. |
+| **Bottom Right (194)** | **Toggle OSK** | Shows / hides the on-screen keyboard. |
+| **Home Button (102)** | **Focus URL Bar & OSK** | Positions the cursor directly in the address bar and displays the keyboard. |
+
+### 5.3 On-Screen Framebuffer Keyboard (OSK)
+- **Direct Tap-to-Type**: Simply tap anywhere along the top **URL Bar** to automatically focus the address field and open the on-screen keyboard.
+- **Hardware Trigger**: You can also press the **Bottom Right side button (194)** or the physical **Home ("n")** button at any time to toggle the OSK.
+- **Interactive Input Preview**: The keyboard features a dedicated live input preview strip displaying the current address or search text, complete with **Clear** (erase entire line) and **Hide Kbd** shortcuts.
+- **Multilingual Support**: Tap **EN / RU** to instantly toggle between English QWERTY and Russian ЙЦУКЕН layouts.
+- **Symbol Mode**: Tap **?123** for numbers, punctuation, and web symbols (`/`, `.`, `:`, `-`, `@`, `_`, `?`).
+- **Dismissing the Keyboard**: Tap anywhere on the page above the keyboard, press the **Top Right side button (193)**, or tap **Hide Kbd**. The keyboard restores the underlying web page bitmap cleanly with zero visual artifacts.
+- **Tactile E-Ink Feedback**: Pressed keys invert in real-time with an instant localized E-ink regional refresh.
+
+### 5.4 Remote Smartphone Keyboard & Controller (`nook-webkey`)
+For typing long URLs, complex passwords, search queries, or form inputs, you can control the browser from your smartphone or computer over local Wi-Fi:
+
+1. Ensure your phone and the NOOK are connected to the same Wi-Fi network.
+2. Open a web browser on your phone and navigate to:
+   ```text
+   http://<NOOK_IP_ADDRESS>:8080
+   ```
+3. **Features**:
+   - **Quick Navigation**: Instant buttons for URL Bar, History Back, Page Up, Page Down, and Toggle OSK.
+   - **Open URL**: Type or paste any address on your phone and tap **Go to URL**.
+   - **Instant Search**: Type search terms and tap **Search DuckDuckGo**.
+   - **Live Phone Keyboard**: Tap the live input field to type into any focused text box on the NOOK screen using your phone's native keyboard, autocorrect, clipboard paste, and voice dictation.

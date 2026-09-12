@@ -1,0 +1,28 @@
+/* E-ink high-contrast stylesheet for NetSurf on BNRV700 */
+
+/* High-contrast links for E-ink */
+a:link, a:visited {
+    color: #000000 !important;
+    text-decoration: underline !important;
+    font-weight: bold !important;
+}
+
+/* Crisp high-contrast input boxes and search bars */
+input[type=text], input[type=search], input[type=url], input:not([type]), textarea {
+    border: 3px solid #000000 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Crisp high-contrast buttons */
+input[type=submit], input[type=button], input[type=reset], button {
+    border: 3px solid #000000 !important;
+    background-color: #e0e0e0 !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+}
+
+/* Solid borders for tables and fieldsets */
+table, th, td, fieldset {
+    border-color: #000000 !important;
+}

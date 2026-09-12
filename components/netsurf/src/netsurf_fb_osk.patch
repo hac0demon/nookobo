@@ -1,0 +1,23 @@
+--- a/netsurf/frontends/framebuffer/gui.c
++++ b/netsurf/frontends/framebuffer/gui.c
+@@ -47,6 +47,10 @@
+ #include "framebuffer/local_history.h"
+
+
++/* Optional BNRV700 SDL preload hook.  The stock frontend remains usable
++ * without the preload library because unresolved weak symbols evaluate NULL. */
++extern void SDL_ShowKeyboardForTextInput(void) __attribute__((weak));
++
+ #define NSFB_TOOLBAR_DEFAULT_LAYOUT "blfsrutc"
+
+ fbtk_widget_t *fbtk;
+@@ -2090,6 +2094,9 @@
+ {
+	struct browser_widget_s *bwidget = fbtk_get_userpw(g->browser);
+
++	if (SDL_ShowKeyboardForTextInput != NULL)
++		SDL_ShowKeyboardForTextInput();
++
+	/* set new pos */
+	fbtk_set_caret(g->browser, true, x, y, height,
+			gui_window_remove_caret_cb);

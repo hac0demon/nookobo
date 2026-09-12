@@ -80,7 +80,7 @@ The BNRV700 Linux port operates as a clean, low-overhead embedded Linux distribu
   - `MXCFB_SEND_UPDATE_V1 = 0x4040462e` (64-byte payload `struct mxcfb_update_data_v1`).
   - `MXCFB_WAIT_FOR_UPDATE_COMPLETE = 0xc008462f` (3221767727 with `struct mxcfb_update_marker_data`).
 - **KOReader Integration**:
-  - `configs/1-bnrv700-hardware.lua` patches `ffi/framebuffer_mxcfb.lua`.
+  - `components/koreader/overlay/1-bnrv700-hardware.lua` patches `ffi/framebuffer_mxcfb.lua`.
   - Maps portrait bounding box coordinates to physical landscape hardware EPDC regions via `bb:getBoundedRect` and `bb:getPhysicalRect`.
   - Completely eliminates EPDC update corruption and `ENOTTY` errors.
 - **Plato Integration**:
@@ -120,9 +120,28 @@ The BNRV700 Linux port operates as a clean, low-overhead embedded Linux distribu
   - White / Cool LEDs driven via TI LM3630A I2C controller / MSP430 PWM (`/sys/class/backlight/mxc_msp430_fl.0/brightness` or `lm3630a_leda`).
   - Warm / Amber LEDs driven via TI LM3630A (`/sys/class/backlight/lm3630a_ledb` or mixer `/sys/class/backlight/lm3630a_led/color`).
 - **Sysfs Emulation**:
-  - `start_plato.sh` and `init_system.sh` mount a bind-mount shadow over `/sys/class/backlight` exposing `lm3630a_led1a`, `lm3630a_led1b`, and `mxc_msp430.0` symlinks.
+  - `components/system/overlay/start_plato.sh` and `components/system/overlay/init_system.sh` mount a bind-mount shadow over `/sys/class/backlight` exposing `lm3630a_led1a`, `lm3630a_led1b`, and `mxc_msp430.0` symlinks.
   - Allows both KOReader and Plato to independently control dual-channel intensity and warmth.
 
 ### 3.5 Audio Subsystem
 - **3.5mm Headphone Jack**: Realtek ALC5640/5645 DAC wired to I2C-0 and Linux ALSA `card 0`. Direct PCM playback via `mpg123` or `espeak-ng`.
 - **Bluetooth A2DP**: RTL8723DS UART Bluetooth controller managed via `bluez` and `bluez-alsa` (`aplay -D bluealsa`).
+
+### 3.6 NetSurf Web Browser Subsystem & SDL Framebuffer Shim
+- **Engine**: NetSurf Framebuffer frontend (`netsurf-fb`) with direct SDL 1.2 video driver (`-f sdl -w 1404 -h 1872 -b 16`).
+- **Direct Framebuffer Shim (`components/netsurf/src/sdl_fb0_shim.c`)**:
+  - Intercepts SDL 1.2 library calls via `LD_PRELOAD=/opt/libSDL-1.2.so.0`.
+  - Maps directly to Linux `/dev/fb0` with 16bpp RGB565 and Freescale EPDC V1 ioctls (`MXCFB_SEND_UPDATE_V1 = 0x4040462e`), eliminating all X11/DirectFB overhead.
+  - **EPDC Damage Tracking**: `SDL_UpdateRect` and `SDL_Flip` compute dirty rects and issue hardware EPDC region flashes.
+  - **32-Bit ARM Musl Stack Compatibility**: NetSurf's `libnsfb` allocates exactly 20 bytes for `SDL_Event` on its stack. The shim enforces `sizeof(SDL_Event) == 20` to prevent stack canary corruption (`udf #0` in `__stack_chk_fail`).
+  - **Thread-Safe Static Timer Pool**: Replaced asynchronous thread creation/destruction with a thread-safe static timer pool (`g_timers[16]`) managed by a dedicated worker thread, eliminating race conditions and use-after-free faults.
+  - **Touch & Event Dispatch**: Reads touch coordinates from `/dev/input/event1`, hardware keys from `/dev/input/by-path/platform-gpio-keys-event` (or `/dev/input/event0`), and commands from `/tmp/netsurf_input.fifo`. Automatically emits `SDL_MOUSEMOTION` prior to clicks to guarantee correct pointer positioning in NetSurf `fbtk`.
+- **Integrated Framebuffer On-Screen Keyboard (OSK)**:
+  - High-contrast 5-row virtual keyboard rendered directly to `/dev/fb0` at the lower 35% of the display.
+  - Supports English QWERTY and Russian Cyrillic ЙЦУКЕН via an embedded 8x16 font table (`components/netsurf/src/font8x16_cyrillic.h`).
+  - Non-destructive save and restore buffers preserve underlying HTML layout during keyboard show/hide cycles.
+  - Inverts key regions upon touch down for immediate visual feedback.
+- **Remote Mobile Input Server (`components/netsurf/src/nook-webkey.c`)**:
+  - Lightweight embedded HTTP server listening on port 8080.
+  - Dispatches typed characters, URLs, searches, and navigation commands to NetSurf via `/tmp/netsurf_input.fifo`.
+  - Enables effortless smartphone typing into NetSurf text fields over local Wi-Fi.

@@ -1,0 +1,94 @@
+Yes, netsurf-fb is completely viable, and Alpine Linux even maintains precompiled packages for it (netsurf-framebuffer).
+
+Because NetSurf uses its own abstracted framebuffer library (libnsfb), it bypasses X11, Wayland, and heavy GPU compositors to render directly to /dev/fb0. It delivers a functional, CSS-capable web browser on an i.MX6 with less than 50 MB of RAM usage.
+
+To run it on your BNRV700 e-ink hardware, there are three e-ink-specific hurdles you must configure: EPDC waveform refreshing, touch/mouse mapping, and keyboard input.
+Hurdle 1: The E-Ink Refresh (EPDC)
+
+Standard LCD/OLED framebuffers constantly raster-scan pixels to the panel. An e-ink display controller (EPDC) does not; it writes pixels to an internal memory buffer and only fires the physical electrophoretic microcapsules when sent an ioctl trigger (MXCFB_SEND_UPDATE).
+
+If you launch netsurf-fb as-is, it will write pixels into /dev/fb0, but the screen will appear frozen or blank.
+
+Solution: Enable Kernel Auto-Update Mode
+
+The stock Netronix/NXP imx6sl kernel includes a hardware auto-update daemon that monitors the framebuffer for dirty rectangles and issues flashing waveforms automatically:
+Bash
+
+# Enable hardware auto-refresh on frame write
+echo 1 > /sys/class/graphics/fb0/epdc_auto_update
+
+# Set default waveform mode to fast 16-level grayscale (mode 2 or 3)
+echo 2 > /sys/class/graphics/fb0/epdc_waveform_mode
+
+Alternatively, if you run a background daemon alongside it, you can use FBInk to force periodic clean flashes:
+Bash
+
+# Flash the screen clean every 10 seconds to clear ghosting
+while true; do fbink -q -w; sleep 10; done &
+
+Hurdle 2: Input Handling (/dev/input/event*)
+
+NetSurf's framebuffer engine defaults to looking for standard PS/2 mice (/dev/input/mice). The BNRV700 uses an Elan I²C touchscreen emitting absolute touch coordinates on /dev/input/event1.
+
+    In your Alpine rootfs, install netsurf-framebuffer and tslib:
+    Bash
+
+    apk update
+    apk add netsurf-framebuffer tslib tslib-dev ttf-dejavu
+
+    Configure libnsfb surface parameters. NetSurf accepts the -f (frontend) and -s (surface) options. Point it to Linux framebuffer and the touchscreen input node:
+    Bash
+
+    export TSLIB_TSDEVICE=/dev/input/event1
+    export TSLIB_CALIBFILE=/etc/pointercal
+
+    Run NetSurf targeting the framebuffer surface:
+    Bash
+
+    netsurf-fb -f linux -s 1404:1872:16 /dev/fb0 https://lite.duckduckgo.com
+
+    (If direct touch handling misses events, calibrate once using ts_calibrate from the tslib package).
+
+Hurdle 3: On-Screen Keyboard (Virtual Keyboard)
+
+netsurf-fb has no built-in touch keyboard for tapping into URL or search bars. You have two ways to navigate:
+
+    Physical Input (Easiest):
+
+        Pair a Bluetooth keyboard (the BNRV700's RTL8723DS Bluetooth chip communicates over /dev/ttymxc1 via bluez / rfkill).
+
+        Or connect a keyboard via an OTG cable through a powered USB hub.
+
+    Software Launch Script (Headless Input):
+
+        Instead of typing URLs into the browser UI, wrap NetSurf in a simple launcher script or KOReader terminal popup that prompts for a URL or search query, then launches netsurf-fb <URL>.
+
+Step-by-Step Installation
+
+    Install fonts and dependencies:
+    Bash
+
+    apk add netsurf-framebuffer font-dejavu
+
+    Define Default Fonts (~/.netsurf/Choices):
+    NetSurf requires explicit TrueType font mappings or it will throw missing-glyph warnings on the console. Ensure /root/.netsurf/Choices contains:
+    Plaintext
+
+    font_sans: /usr/share/fonts/dejavu/DejaVuSans.ttf
+    font_serif: /usr/share/fonts/dejavu/DejaVuSerif.ttf
+    font_mono: /usr/share/fonts/dejavu/DejaVuSansMono.ttf
+    font_size: 140
+
+    (Using font_size: 140 or larger compensates for the high 300 ppi pixel density so text isn't microscopic).
+
+    Execution Script (/opt/start_browser.sh):
+    Bash
+
+    #!/bin/sh
+    # 1. Put display in auto-update mode
+    echo 1 > /sys/class/graphics/fb0/epdc_auto_update 2>/dev/null
+
+    # 2. Launch NetSurf directly to the panel
+    netsurf-fb -f linux -s 1404:1872:16 "$1"
+
+Because NetSurf includes its own layout engine (Hubbub + LibCSS), it handles modern CSS, tables, and basic images cleanly without the sluggishness of WebKit, keeping rendering times within 1–2 seconds on the 1 GHz Cortex-A9.

@@ -1,0 +1,15 @@
+How to Borrow the Best from Quill-OS
+
+https://github.com/Quill-OS/quill
+
+While you shouldn't use Quill-OS wholesale, its repositories are an excellent reference for:
+
+    Power Management Scripts: Look at how InkBox handles CPU frequency scaling (scaling_governor = powersave) and deep sleep:
+    Bash
+
+    # InkBox-style sleep trigger for i.MX6SL
+    echo mem > /sys/power/state
+
+    FBInk Integration: Both Quill-OS and KOReader rely on NiLuJe's FBInk library. Because your Nook kernel exposes /dev/fb0 with NXP/Netronix ioctls, standard FBInk tools can draw directly to the screen, trigger waveform flashes, and clear ghosting outside of Android.
+
+If your primary objective is a bloat-free reader that runs KOReader with 1 GB of RAM and proper sleep states, setting up an Alpine Linux rootfs alongside your stock boot kernel via TWRP remains the fastest and most stable path.

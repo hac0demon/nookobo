@@ -1,6 +1,6 @@
 # Developer & Build Guide
 
-This document provides instructions for compiling binaries, building rootfs images, packaging boot partitions, and developing plugins for the **BNRV700 (NOOK GlowLight Plus 7.8")**.
+This document is a development index for the **BNRV700 (NOOK GlowLight Plus 7.8")**. The complete reproducible host and TWRP procedure is in [BUILD_AND_DEPLOY.md](BUILD_AND_DEPLOY.md).
 
 ---
 
@@ -30,19 +30,17 @@ Verify the compiler:
 make all
 ```
 This target:
-1. Runs `scripts/patch_boot.sh` using `magiskboot` to repack the boot image with the Linux bootstrap script (`build/boot_linux.img`).
+1. Runs `components/kernel/patch_boot.sh` using `magiskboot` to repack the boot image with the Linux bootstrap script (`build/boot_linux.img`).
 2. Runs `scripts/build_rootfs.sh` to download Alpine Linux minirootfs, install packages via `apk.static`, deploy KOReader, compile helper daemons, configure shims, and package `build/deploy_payload.tar.gz`.
 
-### 2.2 Compiling the Button Supervisor Daemon (`btn-watcher`)
+### 2.2 Compiling native components
 ```bash
-./downloads/toolchain_arm/bin/arm-linux-gcc -O2 -Wall workspace/btn-watcher.c -o build/btn-watcher
+make native
+make netsurf
 ```
 
-### 2.3 Compiling the Plato EPDC V1 Shim (`libbnrv700_plato_shim.so`)
-```bash
-./downloads/toolchain_arm/bin/arm-linux-gcc -fPIC -shared -O2 workspace/plato_shim.c \
-    -o build/libbnrv700_plato_shim.so -Lstaging/lib -nodefaultlibs -ldl -lc -lgcc
-```
+The shared `mk/toolchain.mk` supplies the mandatory VFPv3-D16 flags. Native
+source is separated under `components/system/src` and `components/netsurf/src`.
 
 ---
 

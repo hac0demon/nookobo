@@ -1,0 +1,176 @@
+Yes. KOReader has a modular plugin architecture (.koplugin), which allows you to inject custom UI buttons and submenus into its top navigation bar.
+Kindle Mod Shelf
+
+By creating a lightweight custom plugin—platomanager.koplugin—you can add a dedicated menu inside KOReader's Tools tab that checks for Plato releases over Wi-Fi, downloads the latest binary zip, extracts it to /opt/plato, and shows progress popups on your E-Ink screen.
+Step 1: Create the Backend Worker Script (/opt/scripts/update_plato.sh)
+
+Keep network logic and archive extraction in a clean shell script. This keeps the Lua code lightweight and lets you test updates independently via terminal.
+Bash
+
+#!/bin/sh
+# /opt/scripts/update_plato.sh
+set -eu
+
+PLATO_DIR="/opt/plato"
+TMP_ZIP="/tmp/plato-latest.zip"
+API_URL="https://api.github.com/repos/baskerville/plato/releases/latest"
+
+echo "Checking network connectivity..."
+if ! ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+    echo "ERROR: No internet connection. Turn on Wi-Fi first."
+    exit 1
+fi
+
+echo "Fetching latest Plato release info..."
+# Extract browser_download_url for the kobo zip
+DL_URL=$(curl -sL "${API_URL}" | grep "browser_download_url.*plato-kobo-.*\.zip" | head -n 1 | cut -d '"' -f 4)
+
+if [ -z "${DL_URL}" ]; then
+    echo "ERROR: Failed to retrieve download link from GitHub API."
+    exit 2
+fi
+
+echo "Downloading ${DL_URL}..."
+curl -L "${DL_URL}" -o "${TMP_ZIP}"
+
+echo "Extracting to ${PLATO_DIR}..."
+mkdir -p "${PLATO_DIR}"
+unzip -o -q "${TMP_ZIP}" -d "${PLATO_DIR}"
+rm -f "${TMP_ZIP}"
+
+# Ensure binaries have execution bits
+chmod +x "${PLATO_DIR}/plato" 2>/dev/null || true
+
+echo "SUCCESS: Plato updated successfully!"
+exit 0
+
+Make it executable:
+Bash
+
+chmod +x /opt/scripts/update_plato.sh
+
+Step 2: Create the KOReader Plugin
+
+A KOReader plugin requires two files in a folder ending in .koplugin:
+Kindle Mod Shelf
+
+/opt/koreader/plugins/platomanager.koplugin/
+├── _meta.lua
+└── main.lua
+
+1. Plugin Metadata (_meta.lua)
+Lua
+
+-- /opt/koreader/plugins/platomanager.koplugin/_meta.lua
+local _ = require("gettext")
+
+return {
+    name = "platomanager",
+    fullname = _("Plato Manager"),
+    description = _("Update and manage Plato reader directly from KOReader."),
+}
+
+2. Plugin Controller (main.lua)
+
+This creates the menu entry under Tools > Plato Management and uses native dialogs (ConfirmBox, InfoMessage) so you get visual feedback on the e-ink screen.
+Lua
+
+-- /opt/koreader/plugins/platomanager.koplugin/main.lua
+local ConfirmBox = require("ui/widget/confirmbox")
+local InfoMessage = require("ui/widget/infomessage")
+local UIManager = require("ui/uimanager")
+local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local _ = require("gettext")
+
+local PlatoManager = WidgetContainer:extend{
+    name = "platomanager",
+}
+
+function PlatoManager:onUpdatePlato()
+    local confirm_dialog
+    confirm_dialog = ConfirmBox:new{
+        text = _("Download and install the latest Plato release over Wi-Fi?"),
+        ok_text = _("Update"),
+        cancel_text = _("Cancel"),
+        ok_callback = function()
+            -- Show pending banner
+            local wait_info = InfoMessage:new{
+                text = _("Updating Plato... Please wait."),
+                timeout = 0,
+            }
+            UIManager:show(wait_info)
+            UIManager:forceRePaint()
+
+            -- Run the background script and catch the exit status
+            local res = os.execute("/opt/scripts/update_plato.sh > /tmp/plato_update.log 2>&1")
+            UIManager:close(wait_info)
+
+            if res == 0 then
+                UIManager:show(InfoMessage:new{
+                    text = _("Plato was successfully updated!"),
+                    timeout = 3,
+                })
+            else
+                UIManager:show(InfoMessage:new{
+                    text = _("Update failed! Check Wi-Fi or /tmp/plato_update.log."),
+                    timeout = 5,
+                })
+            end
+        end,
+    }
+    UIManager:show(confirm_dialog)
+end
+
+function PlatoManager:onSwitchToPlato()
+    local confirm_dialog
+    confirm_dialog = ConfirmBox:new{
+        text = _("Close KOReader and switch to Plato now?"),
+        ok_text = _("Switch"),
+        cancel_text = _("Cancel"),
+        ok_callback = function()
+            -- Set persistent state for your orchestrator script
+            os.execute("echo plato > /tmp/current_app")
+            -- Exit KOReader cleanly; the launcher shell loop will start Plato
+            local ReaderUI = require("apps/reader/readerui")
+            ReaderUI:exit()
+        end,
+    }
+    UIManager:show(confirm_dialog)
+end
+
+-- Hook into KOReader's top navigation bar
+function PlatoManager:addToMainMenu(menu_items)
+    menu_items.plato_manager = {
+        text = _("Plato"),
+        sorting_hint = "more_tools",
+        sub_item_table = {
+            {
+                text = _("Update Plato (Latest Release)"),
+                callback = function()
+                    self:onUpdatePlato()
+                end,
+            },
+            {
+                text = _("Switch to Plato"),
+                callback = function()
+                    self:onSwitchToPlato()
+                end,
+            },
+        },
+    }
+end
+
+return PlatoManager
+
+Step 3: Verify the Menu in KOReader
+
+    Start or restart KOReader (/opt/koreader/reader.lua /data/books/).
+
+    Tap the top bezel area to reveal the top navigation bar.
+
+    Tap the Tools / Cog tab (wrench/screwdriver icon).
+
+    Look under More tools (or directly in the list if configured): you will see a new entry titled "Plato".
+    Reddit
+
+    Tapping "Update Plato" asks for confirmation, contacts the GitHub API over Wi-Fi, unpacks the fresh binary to /opt/plato, and dismisses itself with a success prompt.

@@ -1,0 +1,11 @@
+fb_face_sans_serif:/usr/share/fonts/dejavu/DejaVuSans.ttf
+fb_face_sans_serif_bold:/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf
+fb_face_sans_serif_italic:/usr/share/fonts/dejavu/DejaVuSans-Oblique.ttf
+fb_face_sans_serif_italic_bold:/usr/share/fonts/dejavu/DejaVuSans-BoldOblique.ttf
+fb_face_serif:/usr/share/fonts/dejavu/DejaVuSerif.ttf
+fb_face_serif_bold:/usr/share/fonts/dejavu/DejaVuSerif-Bold.ttf
+fb_face_monospace:/usr/share/fonts/dejavu/DejaVuSansMono.ttf
+fb_face_monospace_bold:/usr/share/fonts/dejavu/DejaVuSansMono-Bold.ttf
+fb_toolbar_size:70
+fb_furniture_size:70
+scale:220

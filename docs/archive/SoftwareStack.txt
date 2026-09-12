@@ -1,0 +1,14 @@
+How to Fulfill Your Stack on Alpine / Linux
+Desired AppLinux Implementation on i.MX6E-Ink UX & Implementation
+Notes
+NotesMinfolio (KOReader Plugin) or nano / vim over SSH
+Minfolio integrates a Markdown/typewriter note editor directly into KOReader's e-ink rendering engine. Alternatively, use an on-screen keyboard tool with an Alpine text editor.
+RSS Reader
+QuickRSS or Newsboat
+QuickRSS (quickrss.koplugin) runs natively inside KOReader with full HTML formatting and e-ink flashing. For a CLI alternative, Newsboat runs in an Alpine terminal.
+Syncthing
+Native syncthing daemon
+Runs headlessly via Alpine's package manager (apk add syncthing). Syncs notes, reading progress, and Calibre libraries silently in the background over standard TCP.
+Web Browser
+netsurf-framebuffer or KOReader Wikipedia/HTTP tool
+NetSurf uses its own abstracted framebuffer library (libnsfb)

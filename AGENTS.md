@@ -33,12 +33,12 @@ This document defines the architecture, design patterns, operational constraints
     - `MXCFB_WAIT_FOR_UPDATE_COMPLETE = 0xc008462f` (3221767727 with `struct mxcfb_update_marker_data`).
   - EPDC V2 ioctls (`0x4048462e` / `0x4004462f`) fail with `ENOTTY: Not a typewriter`.
 - **KOReader Mapping**:
-  - `configs/1-bnrv700-hardware.lua` overrides `self.mech_refresh` and `self.mech_wait_update_complete` in `ffi/framebuffer_mxcfb.lua`.
+  - `components/koreader/overlay/1-bnrv700-hardware.lua` overrides `self.mech_refresh` and `self.mech_wait_update_complete` in `ffi/framebuffer_mxcfb.lua`.
   - Coordinates MUST be converted from logical portrait to physical landscape using `bb:getBoundedRect(x, y, w, h, ...)` and `bb:getPhysicalRect(x, y, w, h)`.
 - **Plato Mapping**:
   - Plato Aura ONE (`PRODUCT="daylight"`, `MODEL_NUMBER="381"`) issues `0x4044462e` (68-byte V1 struct with `virt_addr`) while Clara HD issues `0x4048462e` (72-byte V2).
   - Both fail on the 3.0.35 kernel with `ENOTTY: Not a typewriter` unless translated.
-  - Plato MUST be launched with `LD_PRELOAD=/opt/plato/libs/libbnrv700_plato_shim.so` (source: `workspace/plato_shim.c`), which:
+  - Plato MUST be launched with `LD_PRELOAD=/opt/plato/libs/libbnrv700_plato_shim.so` (source: `components/system/src/plato_shim.c`), which:
     1. Intercepts `0x4048462e` and `0x4044462e` and translates them to kernel V1 (`0x4040462e`, 64 bytes).
     2. Intercepts `FBIOPUT_VSCREENINFO` (0x4601) and `FBIOGET_VSCREENINFO` (0x4600) to transparently remap rotation by 180° (`(rotate + 2) % 4`), keeping Plato upright with the Home button at the bottom.
     3. Intercepts `open` and `open64` to provide virtual fallback for missing hardware like `/sys/devices/virtual/input/input3/als_vis_data` (ambient light sensor) and `/dev/rtc0`.
@@ -68,8 +68,8 @@ This document defines the architecture, design patterns, operational constraints
 ### 2.3 Hardware Buttons & Multiplexing (`btn-watcher` & `app-switcher`)
 - **Raw Event Node**: `/dev/input/event0` (`gpio-keys`).
   - Keycodes: `KEY_POWER` (116), `KEY_HOME` (102), `KEY_F9` (191), `KEY_F10` (192), `KEY_F11` (193), `KEY_F12` (194), `SW_LID` (0).
-- **Supervisor Daemon**: `/opt/bin/btn-watcher` (source: `workspace/btn-watcher.c`).
-- **App Switcher & Quick Launch**: `/opt/bin/app-switcher` (source: `workspace/app-switcher.c`, font: `workspace/font8x16.h`).
+- **Supervisor Daemon**: `/opt/bin/btn-watcher` (source: `components/system/src/btn-watcher.c`).
+- **App Switcher & Quick Launch**: `/opt/bin/app-switcher` (source: `components/system/src/app-switcher.c`, font: `components/system/src/font8x16.h`).
   - **Operation**:
   - Opens `/dev/input/event0` with `EVIOCGRAB` to prevent double-event reception by readers.
   - Emits filtered events onto a virtual `uinput` node (`/dev/input/event2` labeled `nook-virtual-keys`).
@@ -99,7 +99,7 @@ This document defines the architecture, design patterns, operational constraints
   - Color Mixer: `/sys/class/backlight/lm3630a_led/color` (0..10).
 - **Plato Emulation**:
   - Plato Aura ONE hardcodes `/sys/class/backlight/lm3630a_led1a` and `/sys/class/backlight/lm3630a_led1b`.
-  - A bind mount over `/sys/class/backlight` using `/tmp/fake_backlight` symlinks MUST be active before Plato starts. This is configured in `configs/init_system.sh` and `configs/start_plato.sh`.
+  - A bind mount over `/sys/class/backlight` using `/tmp/fake_backlight` symlinks MUST be active before Plato starts. This is configured in `components/system/overlay/init_system.sh` and `components/system/overlay/start_plato.sh`.
 
 ---
 
@@ -117,28 +117,17 @@ This document defines the architecture, design patterns, operational constraints
 │   ├── DEVELOPMENT.md           # Developer & build guide
 │   ├── BUTTONS.md               # Button supervisor daemon specification
 │   └── TROUBLESHOOTING.md       # Emergency recovery & diagnostics
-├── configs/                     # Production configuration files & userpatches
-│   ├── 1-bnrv700-hardware.lua   # KOReader userpatch for EPDC V1 & single-touch
-│   ├── init_system.sh           # Alpine userspace init script
-│   ├── start_koreader.sh        # KOReader launcher & watchdog
-│   ├── start_plato.sh           # Plato launcher with EPDC shim & sysfs shadow
-│   ├── Settings.toml            # Pre-configured Plato settings
-│   ├── platomanager.koplugin/   # Plato in-app updater and switcher plugin
-│   ├── browser.koplugin/        # NetSurf integration plugin
-│   ├── audioplayer.koplugin/    # MP3 audio player plugin
-│   ├── readaloud.koplugin/      # eSpeak-NG TTS plugin
-│   ├── batterytracker.koplugin/ # Battery tracking plugin
-│   ├── umtprd.conf              # uMTP-Responder USB configuration
-│   └── Choices                  # NetSurf E-ink high-DPI configuration
-├── scripts/                     # Host & target scripts
-│   ├── build_rootfs.sh          # Rootfs payload builder
-│   ├── patch_boot.sh            # Boot image repacker via magiskboot
-│   ├── deploy.sh                # Interactive device deployment assistant
-│   ├── update_plato.sh          # Plato OTA updater backend script
-│   └── toggle_frontlight.sh     # Double-tap power frontlight toggle script
-└── workspace/                   # Native C sources for helper daemons
-    ├── btn-watcher.c            # uinput hardware button supervisor daemon
-    └── plato_shim.c             # Real-time EPDC V2-to-V1 translation shim
+├── components/                  # Separated, publishable source components
+│   ├── common/                  # Headers shared by native components
+│   ├── kernel/                  # Boot-image patch and Alpine bootstrap
+│   ├── koreader/                # KOReader userpatches and plugins
+│   ├── netsurf/                 # NetSurf source, shim, OSK, and overlay
+│   └── system/                  # Init, buttons, Plato shim, and utilities
+├── mk/toolchain.mk              # Shared VFPv3-D16 target ABI settings
+├── packaging/                   # Rootfs merge and release packaging notes
+├── scripts/                     # Build, deployment, and target update scripts
+├── tests/                       # Host-side reproducibility and ABI checks
+└── toolchains/                  # Host and target toolchain compatibility notes
 ```
 
 ---
@@ -150,17 +139,15 @@ The host repository contains an ARMv7 Cortex-A9 cross-compiler at `downloads/too
 
 - **Compile `btn-watcher`**:
   ```bash
-  ./downloads/toolchain_arm/bin/arm-linux-gcc -march=armv7-a -mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard -O2 -Wall workspace/btn-watcher.c -o build/btn-watcher
+  make native
   ```
 - **Compile `app-switcher`**:
   ```bash
-  ./downloads/toolchain_arm/bin/arm-linux-gcc -march=armv7-a -mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard -O2 -Wall workspace/app-switcher.c -o build/app-switcher
+  make native
   ```
 - **Compile `libbnrv700_plato_shim.so`**:
   ```bash
-  ./downloads/toolchain_arm/bin/arm-linux-gcc -march=armv7-a -mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard \
-      -fPIC -shared -O2 workspace/plato_shim.c \
-      -o build/libbnrv700_plato_shim.so -Lstaging/lib -nodefaultlibs -ldl -lc -lgcc
+  make native
   ```
 
 ### 4.2 Building & Packaging
@@ -197,10 +184,10 @@ The host repository contains an ARMv7 Cortex-A9 cross-compiler at `downloads/too
 ## 5. Guidelines for AI Agents
 
 1. **Source Synchronization Rule**:
-   - Never modify files directly on the live device via SSH without also updating the corresponding canonical files in `configs/`, `workspace/`, or `scripts/`.
-   - Always copy edited config files to both `configs/` and `staging/` to ensure clean builds via `make rootfs`.
+   - Never modify files directly on the live device via SSH without also updating the corresponding canonical files in `components/` or `scripts/`.
+   - The rootfs assembler is the only supported path from component overlays to `staging/`; do not hand-edit generated staging files.
 2. **Preserve Userpatch Structure**:
-   - All KOReader modifications MUST remain inside `configs/1-bnrv700-hardware.lua` as an early userpatch (`package.loaders[2]` interceptor).
+   - All KOReader modifications MUST remain inside `components/koreader/overlay/1-bnrv700-hardware.lua` as an early userpatch (`package.loaders[2]` interceptor).
    - Do NOT edit stock KOReader core files in `/opt/koreader/frontend/` directly. This ensures that KOReader internal OTA updates do not break hardware compatibility.
 3. **EPDC Geometry Safety**:
    - Always retain bounding box calculations (`bb:getBoundedRect` and `bb:getPhysicalRect`) in the framebuffer userpatch. Passing raw unaligned logical coordinates to `MXCFB_SEND_UPDATE_V1` will cause kernel framebuffer corruption.
