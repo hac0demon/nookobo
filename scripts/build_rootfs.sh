@@ -385,6 +385,17 @@ cat << 'LDPATH' > "${STAGING_DIR}/etc/ld-musl-armhf.path"
 LDPATH
 
 echo "==> Step 7: Packaging payload into ${PAYLOAD_TAR}..."
+
+# Write the release version marker (used by the boot-time self-update log
+# and scripts/device_check.sh to identify the installed rootfs).
+RELEASE_VERSION="${BNRV700_RELEASE:-$(git -C "${ROOT_DIR}" describe --tags --always --dirty 2>/dev/null || echo local)}"
+printf 'bnrv700-rootfs %s %s\n' "${RELEASE_VERSION}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${STAGING_DIR}/etc/bnrv700-release"
+echo "==> Version marker: bnrv700-rootfs ${RELEASE_VERSION}"
+
 tar -czf "${PAYLOAD_TAR}" -C "${STAGING_DIR}" .
+
+# Publish the payload checksum for the boot-time self-update verification.
+( cd "${BUILD_DIR}" && sha256sum deploy_payload.tar.gz > deploy_payload.tar.gz.sha256 )
+echo "==> Payload checksum: ${BUILD_DIR}/deploy_payload.tar.gz.sha256"
 
 echo "==> Successfully created rootfs payload: ${PAYLOAD_TAR} ($(ls -lh "${PAYLOAD_TAR}" | awk '{print $5}'))"

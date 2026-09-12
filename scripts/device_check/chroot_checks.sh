@@ -14,6 +14,13 @@ else
     bad apk-db "apk info failed"
 fi
 
+# --- rootfs version marker -------------------------------------------------
+if [ -f /etc/bnrv700-release ]; then
+    ok rootfs-version "$(cat /etc/bnrv700-release)"
+else
+    info rootfs-version "marker absent (payload predates versioning)"
+fi
+
 # --- EPDC / framebuffer -------------------------------------------------
 if [ -c /dev/fb0 ]; then
     ok fb0 "character device present"

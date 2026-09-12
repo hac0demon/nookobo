@@ -192,12 +192,38 @@ unpack_payload_if_present() {
     fi
 
     if [ -n "$PAYLOAD_SRC" ]; then
-        echo "[boot_linux] Found payload $PAYLOAD_SRC, deploying to $ROOTFS..." >> "${LOGFILE}"
+        # Verify the payload checksum when a .sha256 sibling was staged
+        # next to it (deploy.sh and release assets provide one).
+        if [ -f "${PAYLOAD_SRC}.sha256" ]; then
+            WANT_SHA="$(head -n1 "${PAYLOAD_SRC}.sha256" | awk '{print $1}')"
+            GOT_SHA=""
+            if [ -x /system/bin/toybox ]; then
+                GOT_SHA="$(/system/bin/toybox sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+            elif command -v sha256sum >/dev/null 2>&1; then
+                GOT_SHA="$(sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+            elif [ -x "$ROOTFS/lib/ld-musl-armhf.so.1" ] && [ -x "$ROOTFS/bin/busybox" ]; then
+                GOT_SHA="$("$ROOTFS/lib/ld-musl-armhf.so.1" "$ROOTFS/bin/busybox" sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+            fi
+            if [ -n "$GOT_SHA" ]; then
+                if [ "$GOT_SHA" = "$WANT_SHA" ]; then
+                    echo "[boot_linux] Payload checksum OK." >> "${LOGFILE}"
+                else
+                    echo "[boot_linux] Payload checksum MISMATCH (want ${WANT_SHA}, got ${GOT_SHA}); keeping ${PAYLOAD_SRC} for retry." >> "${LOGFILE}"
+                    return 0
+                fi
+            else
+                echo "[boot_linux] No sha256sum available; skipping payload checksum verification." >> "${LOGFILE}"
+            fi
+        fi
+
+        OLD_VERSION="$(cat "$ROOTFS/etc/bnrv700-release" 2>/dev/null || echo unknown)"
+        echo "[boot_linux] Found payload $PAYLOAD_SRC, deploying to $ROOTFS (installed: ${OLD_VERSION})..." >> "${LOGFILE}"
         mkdir -p "$ROOTFS"
         run_tar -xzf "$PAYLOAD_SRC" -C "$ROOTFS" 2>> "${LOGFILE}" || true
-        rm -f "$PAYLOAD_SRC" 2>/dev/null || true
+        rm -f "$PAYLOAD_SRC" "${PAYLOAD_SRC}.sha256" 2>/dev/null || true
         chmod +x "$ROOTFS/opt"/*.sh 2>/dev/null || true
-        echo "[boot_linux] Payload deployed successfully at $(date)." >> "${LOGFILE}"
+        NEW_VERSION="$(cat "$ROOTFS/etc/bnrv700-release" 2>/dev/null || echo unknown)"
+        echo "[boot_linux] Payload deployed successfully at $(date). rootfs version: ${OLD_VERSION} -> ${NEW_VERSION}" >> "${LOGFILE}"
     fi
 }
 

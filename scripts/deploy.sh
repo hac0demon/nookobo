@@ -142,13 +142,16 @@ function flash_boot_partition() {
 
 function deploy_payload_sdcard() {
     log_info "=== Stage Payload via Android /sdcard ==="
-    echo "This pushes 'build/deploy_payload.tar.gz' to '/sdcard/deploy_payload.tar.gz' via ADB while in Android."
-    echo "When 'build/boot_linux.img' is booted, 'boot_linux.sh' will automatically detect and extract it into /data/linuxroot."
+    echo "This pushes 'build/deploy_payload.tar.gz' (and its .sha256 checksum) to '/sdcard/' via ADB while in Android."
+    echo "When 'build/boot_linux.img' is booted, 'boot_linux.sh' verifies the checksum and auto-extracts it into /data/linuxroot."
     echo ""
     read -rp "Push payload to /sdcard now? (y/N): " confirm
     if [[ "${confirm}" =~ ^[Yy]$ ]]; then
         log_info "Pushing ${PAYLOAD_TAR} to /sdcard/deploy_payload.tar.gz..."
         adb push "${PAYLOAD_TAR}" /sdcard/deploy_payload.tar.gz
+        if [ -f "${PAYLOAD_TAR}.sha256" ]; then
+            adb push "${PAYLOAD_TAR}.sha256" /sdcard/deploy_payload.tar.gz.sha256
+        fi
         log_success "Payload staged on /sdcard. It will be auto-extracted on first Linux boot."
     else
         log_info "Staging canceled."
