@@ -56,17 +56,18 @@ def ascii_art(img, bw=6, bh=12):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--check"]
-    check = "--check" in sys.argv
+    argv = sys.argv[1:]
+    check = "--check" in argv
     check_min = None
     if check:
-        i = sys.argv.index("--check")
-        check_min = int(sys.argv[i + 1])
-    if len(args) < 2:
+        i = argv.index("--check")
+        check_min = int(argv[i + 1])
+        argv = argv[:i] + argv[i + 2:]
+    if len(argv) < 2:
         sys.exit(__doc__)
-    buf = open(args[0], "rb").read()
-    pre = args[1]
-    forced = int(args[2]) if len(args) > 2 else None
+    buf = open(argv[0], "rb").read()
+    pre = argv[1]
+    forced = int(argv[2]) if len(argv) > 2 else None
     cand, ink, p = {}, {}, 0
     while True:
         img = page_image(buf, p)

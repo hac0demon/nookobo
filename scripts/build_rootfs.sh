@@ -254,6 +254,7 @@ fi
 # Install hardware button supervisor daemon and helper scripts
 mkdir -p "${STAGING_DIR}/opt/bin" "${STAGING_DIR}/opt/scripts"
 [ -f "${ROOT_DIR}/build/btn-watcher" ] && cp "${ROOT_DIR}/build/btn-watcher" "${STAGING_DIR}/opt/bin/btn-watcher"
+[ -f "${ROOT_DIR}/build/epdc_probe" ] && cp "${ROOT_DIR}/build/epdc_probe" "${STAGING_DIR}/opt/bin/epdc_probe"
 [ -f "${ROOT_DIR}/build/libSDL-1.2.so.0" ] && cp "${ROOT_DIR}/build/libSDL-1.2.so.0" "${STAGING_DIR}/opt/libSDL-1.2.so.0"
 [ -f "${ROOT_DIR}/scripts/update_plato.sh" ] && cp "${ROOT_DIR}/scripts/update_plato.sh" "${STAGING_DIR}/opt/scripts/update_plato.sh"
 [ -f "${ROOT_DIR}/scripts/toggle_frontlight.sh" ] && cp "${ROOT_DIR}/scripts/toggle_frontlight.sh" "${STAGING_DIR}/opt/scripts/toggle_frontlight.sh"

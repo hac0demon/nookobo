@@ -22,10 +22,11 @@ NATIVE_BINARIES := \
 	$(BUILD_DIR)/libSDL-1.2.so.0 \
 	$(BUILD_DIR)/nook-webkey \
 	$(BUILD_DIR)/send_key \
-	$(BUILD_DIR)/umtprd
+	$(BUILD_DIR)/umtprd \
+	$(BUILD_DIR)/epdc_probe
 
 .PHONY: all native system netsurf koreader boot patch-boot rootfs payload release ci-inputs deploy \
-	test test-boot push-rootfs clean distclean help
+	test test-boot push-rootfs clean distclean help device-check
 
 # Full host-side build. Downloads and device images are intentionally not
 # checked into Git; see docs/BUILD_AND_DEPLOY.md for prerequisites.
@@ -58,6 +59,8 @@ $(BUILD_DIR)/nook-webkey: $(NETSURF_SRC)/nook-webkey.c | $(BUILD_DIR)
 
 $(BUILD_DIR)/send_key: $(SYSTEM_SRC)/send_key.c | $(BUILD_DIR)
 	$(CC) $(COMMON_CFLAGS) "$<" -o "$@"
+$(BUILD_DIR)/epdc_probe: $(SYSTEM_SRC)/epdc_probe.c | $(BUILD_DIR)
+	$(CC) $(COMMON_CFLAGS) "$<" -o "$@"
 
 $(BUILD_DIR)/umtprd: $(SYSTEM_SRC)/umtprd/Makefile $(shell find $(SYSTEM_SRC)/umtprd/inc $(SYSTEM_SRC)/umtprd/src -type f)
 	$(MAKE) -C "$(SYSTEM_SRC)/umtprd" OBJDIR="$(BUILD_DIR)/umtprd-obj" OUTPUT="$@" CC="$(CC)" CFLAGS="-I./inc $(COMMON_CFLAGS)" LDFLAGS="-lpthread -lrt $(ARCH_CFLAGS) -s"
@@ -88,6 +91,9 @@ ci-inputs:
 test:
 	bash "$(ROOT_DIR)/tests/run.sh"
 
+device-check: $(BUILD_DIR)/epdc_probe
+	bash "$(ROOT_DIR)/scripts/device_check.sh"
+
 test-boot: $(BOOT_OUT)
 	bash "$(ROOT_DIR)/scripts/deploy.sh" --test-boot
 
@@ -109,6 +115,7 @@ help:
 	@echo "  make boot         Patch a stock boot image into build/boot_linux.img"
 	@echo "  make rootfs       Assemble build/deploy_payload.tar.gz"
 	@echo "  make test         Run shell, Lua, layout, and ARM ABI checks"
+	@echo "  make device-check  Run the on-device health check (needs adb + running chroot)"
 	@echo "  make test-boot    Non-destructive fastboot boot test"
 	@echo "  make push-rootfs  Deploy payload through TWRP ADB"
 	@echo "  make deploy       Open the guided deployment assistant"
