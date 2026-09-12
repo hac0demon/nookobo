@@ -1,3 +1,55 @@
+# Build and staging artifacts
+build/
+Build/
+build-*/
+staging/
+downloads/
+dl_test/
+glibc_libs/
+magiskboot/
+workspace/
+scripts/magiskboot
+
+# Pre-component local copies kept by older deployment experiments. The
+# canonical versions are now under components/.
+/boot_linux.sh
+/init_system.sh
+/start_browser.sh
+/start_koreader.sh
+/event_map.lua
+/Choices
+/patch_ramdisk.sh
+/adb_commands.sh
+
+# In-tree third-party build outputs
+components/**/obj/
+components/system/src/umtprd/umtprd
+*.raw
+*.log
+
+# Local tool/recovery scratch files. The committed source lives under
+# components/, docs/, mk/, packaging/, scripts/, and tests/.
+.qwen/
+dl_test/
+configs/
+
+# Downloaded source archives and unpacked third-party build trees
+downloads/netsurf_src/
+downloads/alpine_sysroot/
+downloads/hosttools/
+
+# Device binaries & backup dumps (fetched via Makefile or created during backup)
+boot_backup.img
+boot_linux.img
+deploy_payload.tar.gz
+kernel
+ramdisk.cpio
+init
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~
 # Prerequisites
 *.d
 
@@ -38,11 +90,6 @@
 *.exe
 *.out
 *.app
-
-# Build directories
-build/
-Build/
-build-*/
 
 # CMake generated files
 CMakeFiles/
