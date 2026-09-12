@@ -113,7 +113,7 @@ mkdir -p /data/media/0/Books
 # 6. Launch Syncthing headlessly in background
 mkdir -p /data/syncthing/config /data/syncthing/notes /sdcard/Music
 if [ -x /usr/bin/syncthing ]; then
-    su -s /bin/sh -c "syncthing -home=/data/syncthing/config -gui-address=0.0.0.0:8384 &" root 2>/dev/null || true
+    su -s /bin/sh -c "syncthing serve --home=/data/syncthing/config --gui-address=0.0.0.0:8384 >/var/log/syncthing.log 2>&1 &" root || true
 fi
 
 # 7. Start background battery usage logger (records every 5 minutes)
