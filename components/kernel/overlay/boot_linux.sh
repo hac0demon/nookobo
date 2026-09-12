@@ -182,6 +182,16 @@ run_tar() {
 }
 
 unpack_payload_if_present() {
+    # Use Android busybox applets when available: the boot-time PATH
+    # (Android init) does not guarantee awk/head.
+    if [ -x /system/bin/busybox ]; then
+        bb_awk() { /system/bin/busybox awk "$@"; }
+        bb_head() { /system/bin/busybox head "$@"; }
+    else
+        bb_awk() { awk "$@"; }
+        bb_head() { head "$@"; }
+    fi
+
     PAYLOAD_SRC=""
     if [ -f "/sdcard/deploy_payload.tar.gz" ]; then
         PAYLOAD_SRC="/sdcard/deploy_payload.tar.gz"
@@ -195,16 +205,16 @@ unpack_payload_if_present() {
         # Verify the payload checksum when a .sha256 sibling was staged
         # next to it (deploy.sh and release assets provide one).
         if [ -f "${PAYLOAD_SRC}.sha256" ]; then
-            WANT_SHA="$(head -n1 "${PAYLOAD_SRC}.sha256" | awk '{print $1}')"
+            WANT_SHA="$(bb_head -n1 "${PAYLOAD_SRC}.sha256" | bb_awk '{print $1}')"
             GOT_SHA=""
             if [ -x /system/bin/toybox ]; then
-                GOT_SHA="$(/system/bin/toybox sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+                GOT_SHA="$(/system/bin/toybox sha256sum "${PAYLOAD_SRC}" 2>/dev/null | bb_awk '{print $1}')"
             elif command -v sha256sum >/dev/null 2>&1; then
-                GOT_SHA="$(sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+                GOT_SHA="$(sha256sum "${PAYLOAD_SRC}" 2>/dev/null | bb_awk '{print $1}')"
             elif [ -x "$ROOTFS/lib/ld-musl-armhf.so.1" ] && [ -x "$ROOTFS/bin/busybox" ]; then
-                GOT_SHA="$("$ROOTFS/lib/ld-musl-armhf.so.1" "$ROOTFS/bin/busybox" sha256sum "${PAYLOAD_SRC}" 2>/dev/null | awk '{print $1}')"
+                GOT_SHA="$("$ROOTFS/lib/ld-musl-armhf.so.1" "$ROOTFS/bin/busybox" sha256sum "${PAYLOAD_SRC}" 2>/dev/null | bb_awk '{print $1}')"
             fi
-            if [ -n "$GOT_SHA" ]; then
+            if [ -n "$GOT_SHA" ] && [ -n "$WANT_SHA" ]; then
                 if [ "$GOT_SHA" = "$WANT_SHA" ]; then
                     echo "[boot_linux] Payload checksum OK." >> "${LOGFILE}"
                 else
