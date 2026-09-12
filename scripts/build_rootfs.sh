@@ -80,7 +80,7 @@ echo "==> Step 3: Installing essential packages via apk.static into staging root
     -X https://dl-cdn.alpinelinux.org/alpine/edge/community \
     --allow-untrusted add --no-scripts \
     wpa_supplicant wireless-tools dropbear dhcpcd iw ca-certificates \
-    netsurf-framebuffer font-dejavu umtprd \
+    netsurf-framebuffer freetype font-dejavu umtprd syncthing \
     bluez bluez-deprecated bluez-alsa alsa-utils alsa-lib mpg123 i2c-tools curl \
     espeak-ng
 
