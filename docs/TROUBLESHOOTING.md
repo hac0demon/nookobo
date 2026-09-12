@@ -149,3 +149,65 @@ round-trip (and restores the previous value), so it is not affected by another
 framebuffer client's automatic refreshes. A failing EPDC check while KOReader still
 renders correctly almost always points at a second client writing the framebuffer
 without using the completion wait.
+
+---
+
+## 8. Audio Playback Hang (Stuck I2C Codec)
+
+### 8.1 Symptom
+Starting audio playback (the first `aplay`, e.g. via the Home double-tap audio
+toggle) hangs the kernel: the device is unresponsive for ~60 s, then resets via
+the hardware watchdog (WDT). It boots normally afterwards (chroot dropbear takes
+1-5 min). The hang recurs on every playback start until the codec is fixed.
+Double-tap detection, the `btn-watcher` log line, and the on-screen media card
+still work; only the actual `aplay` stream hangs.
+
+### 8.2 Root cause (high confidence)
+- The only sound card is `alc5640-audio` (ALC5640 AIF1), bound to the
+  **rt5640 codec at `i2c-0:0x1c`** and `imx-ssi.1`.
+- At boot the codec I2C probe fails: `rt5640 0-001c: Failed to set private
+  addr: -5` (EIO), and `i2c i2c-0: Failed to register i2c client rt5640 at
+  0x1a (-16)`. This leaves the codec's I2C slave stuck (clock-stretching /
+  mid-transaction).
+- A healthy second codec `rt5645` at `i2c-0:0x1a` answers `i2cget` instantly;
+  the stuck `rt5640` at `0x1c` does not.
+- The hang is **inside `snd_pcm_open`** — the ASoC DAPM `Off -> STANDBY`
+  transition that powers the codec up (the first codec I2C burst). A staged ALSA
+  probe prints `STAGE: start` and never reaches `open-ok`, then the connection
+  drops at ~60 s.
+- The i.MX I2C driver busy-waits on the stuck bus, starving the single
+  Cortex-A9 core until the WDT (timeout = exactly 60 s) fires.
+
+### 8.3 i.MX6SL register map facts (for debugging)
+- `PAGE_OFFSET = 0xC0000000`; device VA = `0xC0000000 + phys`.
+- `i2c-0` (codec bus) phys `0x021A0000` (VA `0xC21A0000`); `i2c-1` (touch)
+  `0x021A4000`; `i2c-2` (frontlight/PMIC) `0x021A8000`. IOMUXC at `0x020E0000`
+  (VA `0xC20E0000`).
+- The I2C1 (i2c-0) pads on this SL board: dedicated `PAD_I2C1_SCL` (mux_reg
+  `0x15C`, I2C mux 0, GPIO alt `GPIO3_IO12` = Linux 76, mux 5) and
+  `PAD_I2C1_SDA` (mux_reg `0x160`, I2C mux 0, GPIO alt `GPIO3_IO13` = Linux 77,
+  mux 5).
+- **Caveat:** on this kernel `/dev/kmem` gives an **aliased/cached view** of the
+  peripheral region — a write is reflected in kmem read-back but not always in
+  the real register (a GPIO data register written via kmem did not change the
+  sysfs value). `/dev/mem` returns "Bad address" for peripherals because they
+  sit below the RAM base (`0x80000000`) and fall in the /dev/mem "hole". Direct
+  userspace register pokes are best-effort; reliable access needs kernel
+  (ioremap) context. Debug helpers `regpeek`/`kmemwrite`/`alsaprobe` are in
+  `/data/bin/` on the device.
+
+### 8.4 Fix attempts (bounded, 3.0.35)
+1. **I2C 9-clock + STOP bus recovery** via GPIO bit-bang: mux
+   `PAD_I2C1_SCL/SDA` to their GPIO alts, drive 9 SCL clocks + a STOP, restore
+   the mux. Result: `aplay` still hung. Given the kmem-aliasing caveat above the
+   mux write may not have reached the real IOMUXC, so this attempt is
+   inconclusive rather than dispositive.
+2. **Codec re-probe:** `echo 0-001c > /sys/bus/i2c/drivers/rt5640/unbind` then
+   `.../bind`. The sound card survives and the driver re-binds, but `aplay`
+   still hangs — the stuck state persists across a re-probe.
+
+### 8.5 Definitive fix
+The long-term plan is the **4.1.15 kernel migration**, which reworks the board
+file / codec probe / clock (audmux + CCM MCLK) setup and is expected to clear
+the stuck codec. A reliable userspace I2C recovery on 3.0.35 would need a small
+kernel module to do the mux change + bit-bang in ioremap context (deferred).
