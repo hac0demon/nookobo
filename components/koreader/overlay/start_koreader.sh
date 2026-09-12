@@ -91,6 +91,13 @@ while true; do
         echo "==> [OTA] Update successfully applied! Restarting KOReader..."
     fi
 
+    # Re-localize the active script token the way stock koreader.sh does, so
+    # Kobo:isStartupScriptUpToDate() (md5 /tmp/koreader.sh vs
+    # $KOREADER_DIR/koreader.sh) sees the current on-disk launcher after an
+    # in-app OTA has replaced the tree.  Without this the stale /tmp copy
+    # keeps triggering the "startup script has been updated" dialog.
+    cp -pf /opt/koreader/koreader.sh /tmp/koreader.sh 2>/dev/null || true
+    chmod 777 /tmp/koreader.sh 2>/dev/null || true
     echo "==> [start_koreader] Launching ./reader.lua /data/books/ at $(date)..."
     ./reader.lua /data/books/ "$@"
     RET=$?
